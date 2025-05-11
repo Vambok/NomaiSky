@@ -1059,6 +1059,13 @@ public class MyPatchClass {
         ).InstructionEnumeration();
     }
 
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(TimeLoop), nameof(TimeLoop.IsTimeFlowing))]
+    static bool IsTimeFlowing_Prefix(ref bool __result) {
+        __result = true;
+        return false;
+    }
+
     [HarmonyPostfix]
     [HarmonyPatch(typeof(TimeLoop), nameof(TimeLoop.Start))]
     static void Start_Postfix() {
