@@ -6,14 +6,6 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using UnityEngine;
-/*using HarmonyLib;
-using OWML.Common;
-using OWML.ModHelper;
-using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.IO;
-using UnityEngine;*/
 
 namespace NomaiSky;
 public class NomaiSky : ModBehaviour {
@@ -35,20 +27,6 @@ public class NomaiSky : ModBehaviour {
     Quaternion entryRotation;
     // GENERATION:
     readonly int galaxyName = 0;
-
-    //add mysterious artefacts (one / 10 systems) that increase warpPower towards 1
-    //  bigger referenceframevolume (entryradius)
-    //  galactic key not found
-    //add proxies
-    //  correct player spawn
-    //  make shiplog entries sprites
-    //  correct shiplog mapMode
-    //add heightmaps
-    //  lower map speed close range
-    //  star colors too light?
-    //  star light too colored
-    //increase sprites resolution
-    //  make better global outline sprite
 
     // START:
     public void Awake() {
@@ -272,8 +250,6 @@ public class NomaiSky : ModBehaviour {
             NewHorizons.ChangeCurrentStarSystem(galacticMap[newCoords].name);
         }
     }
-    //PlayerData._currentGameSave.shipLogFactSaves["NomaiSky_currentCenter"] = new ShipLogFactSave("(0,0,0)");
-    //PlayerData.GetShipLogFactSave("NomaiSky_currentCenter").id;
     void SpawnIntoSystem(string systemName) {
         if(!otherModsSystems.ContainsKey(currentCenter)) {
             Transform shipSpawnPoint = NewHorizons.GetPlanet(systemName.Substring(9)).transform.Find("ShipSpawnPoint");
@@ -1072,3 +1048,19 @@ public class MyPatchClass {
         TimeLoop._isTimeFlowing = false;
     }
 }
+
+//TODO:
+//add mysterious artefacts (one / 10 systems) that increase warpPower towards 1
+//add proxies
+//add heightmaps
+//increase sprites resolution
+//DONE:
+//  bigger referenceframevolume (entryradius)
+//  galactic key not found
+//  correct player spawn
+//  make shiplog entries sprites
+//  correct shiplog mapMode
+//  lower map speed close range
+//  star colors too light?
+//  star light too colored
+//  make better global outline sprite
