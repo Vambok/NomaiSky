@@ -22,7 +22,12 @@ public class NomaiSky : ModBehaviour {
     readonly Dictionary<(int x, int y, int z), (string name, float radius, Color32 color, string starName)> otherModsSystems = [];
     readonly List<(int x, int y, int z)> visited = [(0, 0, 0)];
     readonly int systemRadius = 200000;
-    public readonly int entryRadius = 100000; //system max radius = 71400
+    public readonly int entryRadius = 100000; /*system max radius = 91065.5 ; because:
+    star radius: 1600 - 6400
+    planet orbits: (every 8500) 10500 - 87000
+    planet radius: 50 - 950 (w relief: 28.5 - 1073.5)
+    moon orbits: (every 500) 1320 - 3820 (w relief, max: 4065.5)
+    moon radius: 10 - 190 (w relief: .5 - 245.5) */
     // WARPING:
     Vector3 entryPosition;
     Quaternion entryRotation;
@@ -65,8 +70,23 @@ public class NomaiSky : ModBehaviour {
     }
     public void OnCompleteSceneLoad(OWScene previousScene, OWScene newScene) {
         //if(newScene != OWScene.SolarSystem) return;
-        string toto = Heightmaps.CreateHeightmap(Path.Combine(ModHelper.Manifest.ModFolderPath, "planets/heightmap"));
-        ModHelper.Console.WriteLine("HM done! "+toto, MessageType.Success);
+        /*string toto = Heightmaps.CreateHeightmap(Path.Combine(ModHelper.Manifest.ModFolderPath, "planets/heightmap")); //TEST
+        ModHelper.Console.WriteLine("HM done! "+toto, MessageType.Success); //TEST*/
+
+        /*new GameObject($"{body.Config.name}_Proxy");
+        NHProxy proxyController = proxy.AddComponent<NHProxy>();
+        proxyController.astroName = body.Config.name;
+        proxyController.planet = planetGO;
+        var rootProxy = new GameObject("Root");
+        rootProxy.transform.parent = proxy.transform;
+        rootProxy.transform.localPosition = Vector3.zero;
+        var success = SharedMake(planetGO, rootProxy, proxyController, body);
+        if(!success) {
+            UnityEngine.Object.Destroy(proxy);
+            return;
+        }
+
+        proxyController.root = rootProxy;*/
     }
     void Update() {
         if(Locator.GetCenterOfTheUniverse() != null) {
@@ -80,11 +100,11 @@ public class NomaiSky : ModBehaviour {
 
     // GALACTIC MAP:
     (string, string, float, Color32, Vector3) GetPlaceholder(int x, int y, int z) {
+        Random128.Initialize(galaxyName, x, y, z);
         if(otherModsSystems.ContainsKey((x, y, z))) {
             (string name, float radius, Color32 color, string starName) = otherModsSystems[(x, y, z)];
             return (name, starName, radius, color, new Vector3(Random128.Rng.Range(entryRadius - systemRadius, systemRadius - entryRadius), Random128.Rng.Range(entryRadius - systemRadius, systemRadius - entryRadius), Random128.Rng.Range(entryRadius - systemRadius, systemRadius - entryRadius)));
         } else {
-            Random128.Initialize(galaxyName, x, y, z);
             string starName = StarNameGen();
             float radius = GaussianDist(4000, 800);
             byte colorR = (byte)Mathf.Min(IGaussianDist(150), 255);
@@ -94,7 +114,7 @@ public class NomaiSky : ModBehaviour {
         }
     }
     void LoadCurrentSystem() {
-        ShipLogFactSave getCurrentCenter = PlayerData.GetShipLogFactSave("NomaiSky_currentCenter");
+        ShipLogFactSave getCurrentCenter = null;//PlayerData.GetShipLogFactSave("NomaiSky_currentCenter"); //TEMP TEST
         if(getCurrentCenter != null) {
             string s_currentCenter = getCurrentCenter.id;
             s_currentCenter = s_currentCenter.Substring(1, s_currentCenter.Length - 2);
@@ -295,7 +315,7 @@ public class NomaiSky : ModBehaviour {
         int fuelPlanet = Random128.Rng.Range(0, nbPlanets);
         int fuelMoon = -1;
         int[] orbits = new int[nbPlanets];
-        int allowedOrbits = 65000 - nbPlanets * 6500;
+        int allowedOrbits = 76500 - nbPlanets * 8500;
         for(int i = 0;i < nbPlanets;i++) {
             orbits[i] = Random128.Rng.Range(0, allowedOrbits);
         }
@@ -321,10 +341,10 @@ public class NomaiSky : ModBehaviour {
             string planetName = PlanetNameGen();
             Directory.CreateDirectory(Path.Combine(path, planetName));
             using StreamWriter planetOutputFile = new(Path.Combine(path, planetName, planetName + ".json"));
-            planetOutputFile.Write(PlanetCreator(systemName, planetName, orbits[i] + 6500 * i + 9700, (i == fuelPlanet && fuelMoon < 0)));//, "", i == Mathf.FloorToInt(nbPlanets / 2f)));
+            planetOutputFile.Write(PlanetCreator(systemName, planetName, orbits[i] + 8500 * i + 10500, (i == fuelPlanet && fuelMoon < 0)));//, "", i == Mathf.FloorToInt(nbPlanets / 2f)));
             if(nbMoons > 0) {
                 int[] moonOrbits = new int[nbMoons];
-                int allowedMoonOrbits = 2200 - (nbMoons * 400);
+                int allowedMoonOrbits = 3000 - (nbMoons * 500);
                 for(int j = 0;j < nbMoons;j++) {
                     moonOrbits[j] = Random128.Rng.Range(0, allowedOrbits);
                 }
@@ -333,7 +353,7 @@ public class NomaiSky : ModBehaviour {
                     string moonName = PlanetNameGen(true);
                     Directory.CreateDirectory(Path.Combine(path, planetName, moonName.Replace(' ', '_')));
                     using StreamWriter outputMoonFile = new(Path.Combine(path, planetName, moonName.Replace(' ', '_'), moonName.Replace(' ', '_') + ".json"));
-                    outputMoonFile.Write(PlanetCreator(systemName, moonName, moonOrbits[j] + 400 * j + 1200, j == fuelMoon, planetName));
+                    outputMoonFile.Write(PlanetCreator(systemName, moonName, moonOrbits[j] + 500 * j + 1320, j == fuelMoon, planetName));
                 }
             }
         }
@@ -341,77 +361,79 @@ public class NomaiSky : ModBehaviour {
     }
     string StarCreator(string solarSystem) {
         string relativePath = "planets/" + solarSystem + "/" + solarSystem + "/";
-        string finalJson = "{\n\"name\": \"" + solarSystem + "\",\n";
-        finalJson += "\"$schema\": \"https://raw.githubusercontent.com/Outer-Wilds-New-Horizons/new-horizons/main/NewHorizons/Schemas/body_schema.json\",\n";
-        finalJson += "\"starSystem\": \"NomaiSky_" + solarSystem + "\",\n";
-        finalJson += "\"canShowOnTitle\": false,\n";
-        finalJson += "\"Base\": {\n";
+        string finalJson = "{\n\"name\": \"" + solarSystem + "\",\n" +
+            "\"$schema\": \"https://raw.githubusercontent.com/Outer-Wilds-New-Horizons/new-horizons/main/NewHorizons/Schemas/body_schema.json\",\n" +
+            "\"starSystem\": \"NomaiSky_" + solarSystem + "\",\n" +
+            "\"canShowOnTitle\": false,\n" +
+            "\"Base\": {\n";
         float radius = GaussianDist(4000, 800);
         byte colorR = (byte)Mathf.Min(IGaussianDist(150), 255);
         byte colorG = (byte)Mathf.Min(IGaussianDist(150), 255);
         byte colorB = (byte)Mathf.Min(IGaussianDist(150), 255);
-        finalJson += "    \"surfaceSize\": " + radius.ToString(CultureInfo.InvariantCulture) + ",\n";
-        finalJson += "    \"surfaceGravity\": " + GaussianDist(radius * 3 / 500).ToString(CultureInfo.InvariantCulture) + ",\n";
-        finalJson += "    \"gravityFallOff\": \"inverseSquared\",\n";
-        finalJson += "    \"centerOfSolarSystem\": true\n";
-        finalJson += "},\n";
-        finalJson += "\"Orbit\": {\n";
-        finalJson += "    \"showOrbitLine\": false,\n";
-        finalJson += "    \"isStatic\": true\n";
-        finalJson += "},\n";
-        finalJson += "\"Star\": {\n";
-        finalJson += "    \"size\": " + radius.ToString(CultureInfo.InvariantCulture) + ",\n";
-        finalJson += "    \"tint\": {\n";
+        finalJson += "    \"surfaceSize\": " + radius.ToString(CultureInfo.InvariantCulture) + ",\n" +
+            "    \"surfaceGravity\": " + GaussianDist(radius * 3 / 500).ToString(CultureInfo.InvariantCulture) + ",\n" +
+            "    \"gravityFallOff\": \"inverseSquared\",\n" +
+            "    \"centerOfSolarSystem\": true\n" +
+            "},\n" +
+            "\"Orbit\": {\n" +
+            "    \"showOrbitLine\": false,\n" +
+            "    \"isStatic\": true\n" +
+            "},\n" +
+            "\"Star\": {\n" +
+            "    \"size\": " + radius.ToString(CultureInfo.InvariantCulture) + ",\n" +
+            "    \"tint\": {\n";
         SpriteGenerator("star", relativePath + "map_star.png", colorR, colorG, colorB);
-        finalJson += "        \"r\": " + colorR + ",\n";
-        finalJson += "        \"g\": " + colorG + ",\n";
-        finalJson += "        \"b\": " + colorB + ",\n";
-        finalJson += "        \"a\": 255\n";
-        finalJson += "    },\n";
-        finalJson += "    \"lightTint\": {\n";
-        finalJson += "        \"r\": " + (colorR + 510) / 3 + ",\n";
-        finalJson += "        \"g\": " + (colorG + 510) / 3 + ",\n";
-        finalJson += "        \"b\": " + (colorB + 510) / 3 + ",\n";
-        finalJson += "        \"a\": 255\n";
-        finalJson += "    },\n";
-        finalJson += "    \"solarLuminosity\": " + Random128.Rng.Range(0.3f, 3f).ToString(CultureInfo.InvariantCulture) + ",\n";
-        finalJson += "    \"stellarDeathType\": \"none\"\n";
-        finalJson += "},\n";
-        finalJson += "\"Spawn\": {\n";
-        finalJson += "    \"playerSpawnPoints\": [\n";
-        finalJson += "        {\"isDefault\": true,\n\"startWithSuit\": true,\n";
-        finalJson += "        \"position\": {\"x\": 0, \"y\": 10000, \"z\": -34100},\n";
-        finalJson += "        \"rotation\": {\"x\": 16.334, \"y\": 0, \"z\": 0}}\n";
-        finalJson += "    ],\n";
-        finalJson += "    \"shipSpawnPoints\": [\n";
-        finalJson += "        {\"isDefault\": true,\n";
-        finalJson += "        \"position\": {\"x\": 0, \"y\": 10000, \"z\": -34100},\n";
-        finalJson += "        \"rotation\": {\"x\": 16.334, \"y\": 0, \"z\": 0}}\n";
-        finalJson += "    ]\n";
-        finalJson += "},\n";
-        finalJson += "\"ShipLog\": {\n";
-        //finalJson += "    \"spriteFolder\": \"" + relativePath + "sprites\",\n";
-        finalJson += "    \"mapMode\": {\n";
-        finalJson += "        \"revealedSprite\": \"" + relativePath + "map_star.png\",\n";
-        finalJson += "        \"scale\": " + (radius / 500f).ToString(CultureInfo.InvariantCulture) + ",\n";
-        finalJson += "        \"selectable\": false\n";
-        finalJson += "    }\n";
-        return finalJson + "}\n}";
+        finalJson += "        \"r\": " + colorR + ",\n" +
+            "        \"g\": " + colorG + ",\n" +
+            "        \"b\": " + colorB + ",\n" +
+            "        \"a\": 255\n" +
+            "    },\n" +
+            "    \"lightTint\": {\n" +
+            "        \"r\": " + (colorR + 510) / 3 + ",\n" +
+            "        \"g\": " + (colorG + 510) / 3 + ",\n" +
+            "        \"b\": " + (colorB + 510) / 3 + ",\n" +
+            "        \"a\": 255\n" +
+            "    },\n" +
+            "    \"solarLuminosity\": " + Random128.Rng.Range(0.3f, 3f).ToString(CultureInfo.InvariantCulture) + ",\n" +
+            "    \"stellarDeathType\": \"none\"\n" +
+            "},\n" +
+            "\"Spawn\": {\n" +
+            "    \"playerSpawnPoints\": [\n" +
+            "        {\"isDefault\": true,\n\"startWithSuit\": true,\n" +
+            "        \"position\": {\"x\": 0, \"y\": 10000, \"z\": -34100},\n" +
+            "        \"rotation\": {\"x\": 16.334, \"y\": 0, \"z\": 0},\n" +
+            "        \"offset\": {\"x\": 0, \"y\": 0, \"z\": 0}}\n" +
+            "    ],\n" +
+            "    \"shipSpawnPoints\": [\n" +
+            "        {\"isDefault\": true,\n" +
+            "        \"position\": {\"x\": 0, \"y\": 10000, \"z\": -34100},\n" +
+            "        \"rotation\": {\"x\": 16.334, \"y\": 0, \"z\": 0}}\n" +
+            "    ]\n" +
+            "},\n" +
+            "\"ShipLog\": {\n" +
+            //"    \"spriteFolder\": \"" + relativePath + "sprites\",\n" +
+            "    \"mapMode\": {\n" +
+            "        \"revealedSprite\": \"" + relativePath + "map_star.png\",\n" +
+            "        \"scale\": " + (radius / 500f).ToString(CultureInfo.InvariantCulture) + ",\n" +
+            "        \"selectable\": false\n" +
+            "    }\n" +
+            "}\n}";
+        return finalJson;
     }
     string PlanetCreator(string solarSystem, string planetName, int orbit, bool fuel, string orbiting = "") {
         string relativePath = "planets/" + solarSystem + "/" + (orbiting != "" ? orbiting + "/" : "") + planetName.Replace(' ', '_') + "/";
         string characteristics = "A ";
         List<char> vowels = ['a', 'e', 'i', 'o', 'u'];
-        string finalJson = "{\n\"name\": \"" + planetName + "\",\n";
-        finalJson += "\"$schema\": \"https://raw.githubusercontent.com/Outer-Wilds-New-Horizons/new-horizons/main/NewHorizons/Schemas/body_schema.json\",\n";
+        string finalJson = "{\n\"name\": \"" + planetName + "\",\n" +
+            "\"$schema\": \"https://raw.githubusercontent.com/Outer-Wilds-New-Horizons/new-horizons/main/NewHorizons/Schemas/body_schema.json\",\n";
         if(solarSystem == "SolarSystem") {
             finalJson += "\"starSystem\": \"SolarSystem\",\n";
             solarSystem = "Sun";
         } else {
             finalJson += "\"starSystem\": \"NomaiSky_" + solarSystem + "\",\n";
         }
-        finalJson += "\"canShowOnTitle\": false,\n";
-        finalJson += "\"Base\": {\n";
+        finalJson += "\"canShowOnTitle\": false,\n" +
+            "\"Base\": {\n";
         float radius = (orbiting == "") ? GaussianDist(500, 150) : GaussianDist(100, 30);
         //finalJson += "    \"groundSize\": " + (radius - 1).ToString(CultureInfo.InvariantCulture) + ",\n";
         finalJson += "    \"surfaceSize\": " + radius.ToString(CultureInfo.InvariantCulture) + ",\n";
@@ -435,17 +457,17 @@ public class NomaiSky : ModBehaviour {
             < 2 => "light ",
             _ => ""
         };
-        finalJson += "    \"gravityFallOff\": \"inverseSquared\"\n";
-        finalJson += "},\n";
-        finalJson += "\"ProcGen\": {\n";
-        finalJson += "    \"color\": {\n";
+        finalJson += "    \"gravityFallOff\": \"inverseSquared\"\n" +
+            "},\n" +
+            "\"ProcGen\": {\n" +
+            "    \"color\": {\n";
         byte colorR = (byte)IGaussianDist(130, 50, 2.5f);
         byte colorG = (byte)IGaussianDist(130, 50, 2.5f);
         byte colorB = (byte)IGaussianDist(130, 50, 2.5f);
         SpriteGenerator("planet", relativePath + "map_planet.png", colorR, colorG, colorB);
-        finalJson += "        \"r\": " + colorR + ",\n";
-        finalJson += "        \"g\": " + colorG + ",\n";
-        finalJson += "        \"b\": " + colorB + "\n";
+        finalJson += "        \"r\": " + colorR + ",\n" +
+            "        \"g\": " + colorG + ",\n" +
+            "        \"b\": " + colorB + "\n";
         string stemp = GetColorName(new Color32(colorR, colorG, colorB, 255)) + " ";
         finalJson += "    },\n";
         temp = Mathf.Max(GaussianDist(0, 0.2f, 5), 0);
@@ -462,22 +484,22 @@ public class NomaiSky : ModBehaviour {
         if(vowels.Contains(characteristics[2])) {
             characteristics = characteristics.Insert(1, "n");
         }
-        finalJson += "},\n";
-        finalJson += "\"Orbit\": {\n";
+        finalJson += "},\n" +
+            "\"Orbit\": {\n";
         if(orbiting != "") {
-            finalJson += "    \"isMoon\": true,\n";
-            finalJson += "    \"primaryBody\": \"" + orbiting + "\",\n";
+            finalJson += "    \"isMoon\": true,\n" +
+                "    \"primaryBody\": \"" + orbiting + "\",\n";
             characteristics += "moon, with ";
         } else {
             finalJson += "    \"primaryBody\": \"" + solarSystem + "\",\n";
             characteristics += "planet, with ";
         }
-        finalJson += "    \"semiMajorAxis\": " + orbit + ",\n";
-        finalJson += "    \"inclination\": " + GaussianDist(0, 10, 9).ToString(CultureInfo.InvariantCulture) + ",\n";
-        finalJson += "    \"longitudeOfAscendingNode\": " + Random128.Rng.Range(0, 360) + ",\n";
-        finalJson += "    \"trueAnomaly\": " + Random128.Rng.Range(0, 360) + ",\n";//(isSpawn ? 0 : Random128.Rng.Range(0, 360)) + ",\n";
-        finalJson += "    \"isTidallyLocked\": " + (Random128.Rng.Range(0, 4) == 0).ToString().ToLower() + "\n";
-        finalJson += "},\n";
+        finalJson += "    \"semiMajorAxis\": " + orbit + ",\n" +
+            "    \"inclination\": " + GaussianDist(0, 10, 9).ToString(CultureInfo.InvariantCulture) + ",\n" +
+            "    \"longitudeOfAscendingNode\": " + Random128.Rng.Range(0, 360) + ",\n" +
+            "    \"trueAnomaly\": " + Random128.Rng.Range(0, 360) + ",\n" +
+            "    \"isTidallyLocked\": " + (Random128.Rng.Range(0, 4) == 0).ToString().ToLower() + "\n" +
+            "},\n";
         float ringRadius = 0;
         if(Random128.Rng.Range(0, 10) == 0) {
             finalJson += "\"Rings\": [{\n";
@@ -485,10 +507,10 @@ public class NomaiSky : ModBehaviour {
             finalJson += "    \"innerRadius\": " + ringInnerRadius.ToString(CultureInfo.InvariantCulture) + ",\n";
             float ringSpread = (radius * 3 - ringInnerRadius) / 2;
             ringRadius = GaussianDist(radius * 3 - ringSpread, ringSpread / 3);
-            finalJson += "    \"outerRadius\": " + ringRadius.ToString(CultureInfo.InvariantCulture) + ",\n";
-            finalJson += "    \"texture\": \"" + relativePath + "rings.png\",\n";
-            finalJson += "    \"fluidType\": \"sand\"\n";
-            finalJson += "}],\n";
+            finalJson += "    \"outerRadius\": " + ringRadius.ToString(CultureInfo.InvariantCulture) + ",\n" +
+                "    \"texture\": \"" + relativePath + "rings.png\",\n" +
+                "    \"fluidType\": \"sand\"\n" +
+                "}],\n";
             colorR = (byte)IGaussianDist(130, 50, 2.5f);
             colorG = (byte)IGaussianDist(130, 50, 2.5f);
             colorB = (byte)IGaussianDist(130, 50, 2.5f);
@@ -497,29 +519,29 @@ public class NomaiSky : ModBehaviour {
         }
         finalJson += "\"Atmosphere\": {\n";
         float atmosphereSize = GaussianDist(radius * 6 / 5, radius / 20, 4);
-        finalJson += "    \"size\": " + atmosphereSize.ToString(CultureInfo.InvariantCulture) + ",\n";
-        finalJson += "    \"atmosphereTint\": {\n";
+        finalJson += "    \"size\": " + atmosphereSize.ToString(CultureInfo.InvariantCulture) + ",\n" +
+            "    \"atmosphereTint\": {\n";
         colorR = (byte)Mathf.Min(IGaussianDist(200, 50, 4), 255);
         colorG = (byte)Mathf.Min(IGaussianDist(200, 50, 4), 255);
         colorB = (byte)Mathf.Min(IGaussianDist(200, 50, 4), 255);
         byte colorA = (byte)Mathf.Min(IGaussianDist(255, 50, 5), 255);
         SpriteGenerator("atmosphere", relativePath + "map_atmosphere.png", colorR, colorG, colorB, colorA);
-        finalJson += "        \"r\": " + colorR + ",\n";
-        finalJson += "        \"g\": " + colorG + ",\n";
-        finalJson += "        \"b\": " + colorB + ",\n";
-        finalJson += "        \"a\": " + colorA + "\n";
+        finalJson += "        \"r\": " + colorR + ",\n" +
+            "        \"g\": " + colorG + ",\n" +
+            "        \"b\": " + colorB + ",\n" +
+            "        \"a\": " + colorA + "\n";
         stemp = GetColorName(new Color32(colorR, colorG, colorB, 255));
         characteristics += (vowels.Contains(stemp[0]) ? "an " : "a ") + stemp + " atmosphere";
         finalJson += "    },\n";
         if(Random128.Rng.Range(0, 4) == 0) {
-            finalJson += "    \"fogTint\": {\n";
-            finalJson += "        \"r\": " + IGaussianDist(130, 50, 2.5f) + ",\n";
-            finalJson += "        \"g\": " + IGaussianDist(130, 50, 2.5f) + ",\n";
-            finalJson += "        \"b\": " + IGaussianDist(130, 50, 2.5f) + ",\n";
-            finalJson += "        \"a\": " + Mathf.Min(IGaussianDist(255, 50, 5), 255) + "\n";
-            finalJson += "    },\n";
-            finalJson += "    \"fogSize\": " + Random128.Rng.Range(radius, atmosphereSize).ToString(CultureInfo.InvariantCulture) + ",\n";
-            finalJson += "    \"fogDensity\": " + Random128.Rng.Range(0f, 1f).ToString(CultureInfo.InvariantCulture) + ",\n";
+            finalJson += "    \"fogTint\": {\n" +
+                "        \"r\": " + IGaussianDist(130, 50, 2.5f) + ",\n" +
+                "        \"g\": " + IGaussianDist(130, 50, 2.5f) + ",\n" +
+                "        \"b\": " + IGaussianDist(130, 50, 2.5f) + ",\n" +
+                "        \"a\": " + Mathf.Min(IGaussianDist(255, 50, 5), 255) + "\n" +
+                "    },\n" +
+                "    \"fogSize\": " + Random128.Rng.Range(radius, atmosphereSize).ToString(CultureInfo.InvariantCulture) + ",\n" +
+                "    \"fogDensity\": " + Random128.Rng.Range(0f, 1f).ToString(CultureInfo.InvariantCulture) + ",\n";
         }
         bool hasTrees = Random128.Rng.RandomBool();
         finalJson += "    \"hasOxygen\": " + hasTrees.ToString().ToLower() + ",\n";
@@ -527,29 +549,30 @@ public class NomaiSky : ModBehaviour {
             characteristics += ". There seems to be oxygen";
             hasTrees = Random128.Rng.RandomBool();
         }
-        finalJson += "    \"hasTrees\": " + hasTrees.ToString().ToLower() + ",\n";
-        finalJson += "    \"hasRain\": " + (Random128.Rng.Range(0, 6) == 0).ToString().ToLower() + "\n";
-        finalJson += "},\n";
-        finalJson += "\"HeightMap\": {\n";
-        Heightmaps.CreateHeightmap(Path.Combine(ModHelper.Manifest.ModFolderPath, relativePath, "heightmap.png"));
+        finalJson += "    \"hasTrees\": " + hasTrees.ToString().ToLower() + ",\n" +
+            "    \"hasRain\": " + (Random128.Rng.Range(0, 6) == 0).ToString().ToLower() + "\n" +
+            "},\n" +
+            "\"HeightMap\": {\n";
+        stemp = Heightmaps.CreateHeightmap(Path.Combine(ModHelper.Manifest.ModFolderPath, relativePath, "heightmap.png"), radius);
+        ModHelper.Console.WriteLine(planetName+"'s HM done! " + stemp); //TEST
         finalJson += "    \"heightMap\": \"" + relativePath + "heightmap.png\",\n";
-        temp = 2 * Mathf.Sqrt(radius);
-        finalJson += "    \"minHeight\": " + (radius - temp).ToString(CultureInfo.InvariantCulture) + ",\n";
-        finalJson += "    \"maxHeight\": " + (radius + temp).ToString(CultureInfo.InvariantCulture) + "\n";
-        finalJson += "},\n";
+        temp = Mathf.Sqrt(radius);
+        finalJson += "    \"minHeight\": " + (radius - 3 * temp).ToString(CultureInfo.InvariantCulture) + ",\n" +
+            "    \"maxHeight\": " + (radius + 4 * temp).ToString(CultureInfo.InvariantCulture) + "\n" +
+            "},\n";
         if(hasTrees || fuel) {
-            finalJson += "\"Props\": {\n";
-            finalJson += "    \"scatter\": [\n";
+            finalJson += "\"Props\": {\n" +
+                "    \"scatter\": [\n";
             if(fuel) {
                 finalJson += "{\"path\": \"" + (hasDLC ? "RingWorld_Body/Sector_RingInterior/Sector_Zone2/Structures_Zone2/EyeTempleRuins_Zone2/Interactables_EyeTempleRuins_Zone2/Prefab_IP_FuelTorch (1)\"" : "CaveTwin_Body/Sector_CaveTwin/Sector_NorthHemisphere/Sector_NorthSurface/Sector_Lakebed/Interactables_Lakebed/Prefab_HEA_FuelTank\", \"rotation\": {\"x\": 30, \"y\": 0, \"z\": 270}") + ", \"count\": 1}" + (hasTrees ? "," : "") + "\n";
             }
             if(hasTrees) {
-                finalJson += "        {\"path\": \"" + (hasDLC ? "DreamWorld_Body/Sector_DreamWorld/Sector_Underground/IslandsRoot/IslandPivot_B/Island_B/Props_Island_B/Tree_DW_L (3)" : "QuantumMoon_Body/Sector_QuantumMoon/State_TH/Interactables_THState/Crater_1/Crater_1_QRedwood/QRedwood (2)/Prefab_TH_Redwood") + "\", \"count\": " + IGaussianDist(radius * radius / 1250) + ", \"scale\": " + GaussianDist(1, 0.2f).ToString(CultureInfo.InvariantCulture) + "},\n";
-                finalJson += "        {\"path\": \"" + (hasDLC ? "DreamWorld_Body/Sector_DreamWorld/Sector_DreamZone_4/Props_DreamZone_4_Upper/Tree_DW_S_B" : "QuantumMoon_Body/Sector_QuantumMoon/State_TH/Interactables_THState/Crater_3/Crater_3_Sapling/QSapling/Tree_TH_Sapling") + "\", \"count\": " + IGaussianDist(radius * radius / 1250) + ", \"scale\": " + GaussianDist(1, 0.2f).ToString(CultureInfo.InvariantCulture) + "}\n";
+                finalJson += "        {\"path\": \"" + (hasDLC ? "DreamWorld_Body/Sector_DreamWorld/Sector_Underground/IslandsRoot/IslandPivot_B/Island_B/Props_Island_B/Tree_DW_L (3)" : "QuantumMoon_Body/Sector_QuantumMoon/State_TH/Interactables_THState/Crater_1/Crater_1_QRedwood/QRedwood (2)/Prefab_TH_Redwood") + "\", \"count\": " + IGaussianDist(radius * radius / 1250) + ", \"scale\": " + GaussianDist(1, 0.2f).ToString(CultureInfo.InvariantCulture) + "},\n" +
+                    "        {\"path\": \"" + (hasDLC ? "DreamWorld_Body/Sector_DreamWorld/Sector_DreamZone_4/Props_DreamZone_4_Upper/Tree_DW_S_B" : "QuantumMoon_Body/Sector_QuantumMoon/State_TH/Interactables_THState/Crater_3/Crater_3_Sapling/QSapling/Tree_TH_Sapling") + "\", \"count\": " + IGaussianDist(radius * radius / 1250) + ", \"scale\": " + GaussianDist(1, 0.2f).ToString(CultureInfo.InvariantCulture) + "}\n";
                 characteristics += " and trees";
             }
-            finalJson += "    ]\n";
-            finalJson += "},\n";
+            finalJson += "    ]\n" +
+                "},\n";
         }
         characteristics += ".";
         /*if(isSpawn) {
@@ -561,34 +584,35 @@ public class NomaiSky : ModBehaviour {
             finalJson += "    ]\n";
             finalJson += "},\n";
         }*/
-        finalJson += "\"ShipLog\": {\n";
-        finalJson += "    \"spriteFolder\": \"" + relativePath + "sprites\",\n";
-        finalJson += "    \"xmlFile\": \"" + relativePath + "shiplogs.xml\",\n";
-        finalJson += "    \"mapMode\": {\n";
-        finalJson += "        \"outlineSprite\": \"planets/outline.png\",\n";
-        finalJson += "        \"revealedSprite\": \"" + relativePath + "map_atmosphere.png\",\n";
-        finalJson += "        \"scale\": " + (atmosphereSize / 500f).ToString(CultureInfo.InvariantCulture) + ",\n";
-        finalJson += "        \"offset\": " + (atmosphereSize / 500f).ToString(CultureInfo.InvariantCulture) + ",\n";
-        finalJson += "        \"details\": [\n";
-        finalJson += "            {\"revealedSprite\": \"" + relativePath + "map_planet.png\",\n";
-        finalJson += "            \"scale\": {\"x\": " + (radius / 500f).ToString(CultureInfo.InvariantCulture) + ",\"y\": " + (radius / 500f).ToString(CultureInfo.InvariantCulture) + "},\n";
+        finalJson += "\"ShipLog\": {\n" +
+            "    \"spriteFolder\": \"" + relativePath + "sprites\",\n" +
+            "    \"xmlFile\": \"" + relativePath + "shiplogs.xml\",\n" +
+            "    \"mapMode\": {\n" +
+            "        \"outlineSprite\": \"planets/outline.png\",\n" +
+            "        \"revealedSprite\": \"" + relativePath + "map_atmosphere.png\",\n" +
+            "        \"scale\": " + (atmosphereSize / 500f).ToString(CultureInfo.InvariantCulture) + ",\n" +
+            "        \"offset\": " + (atmosphereSize / 500f).ToString(CultureInfo.InvariantCulture) + ",\n" +
+            "        \"details\": [\n" +
+            "            {\"revealedSprite\": \"" + relativePath + "map_planet.png\",\n" +
+            "            \"scale\": {\"x\": " + (radius / 500f).ToString(CultureInfo.InvariantCulture) + ",\"y\": " + (radius / 500f).ToString(CultureInfo.InvariantCulture) + "},\n";
         if(ringRadius > 0) {
-            finalJson += "            \"invisibleWhenHidden\": true},\n";
-            finalJson += "            {\"revealedSprite\": \"" + relativePath + "map_rings.png\",\n";
-            finalJson += "            \"scale\": {\"x\": " + (ringRadius / 500f).ToString(CultureInfo.InvariantCulture) + ",\"y\": " + (ringRadius / 500f).ToString(CultureInfo.InvariantCulture) + "},\n";
+            finalJson += "            \"invisibleWhenHidden\": true},\n" +
+                "            {\"revealedSprite\": \"" + relativePath + "map_rings.png\",\n" +
+                "            \"scale\": {\"x\": " + (ringRadius / 500f).ToString(CultureInfo.InvariantCulture) + ",\"y\": " + (ringRadius / 500f).ToString(CultureInfo.InvariantCulture) + "},\n";
         }
-        finalJson += "            \"invisibleWhenHidden\": true}\n";
-        finalJson += "        ]\n";
-        finalJson += "    }\n";
-        finalJson += "},\n";
-        finalJson += "\"Volumes\": {\n";
-        finalJson += "    \"revealVolumes\": [\n";
-        finalJson += "        {\"radius\": " + (1.2f * (ringRadius > 0 ? ringRadius : radius)).ToString(CultureInfo.InvariantCulture) + ",\n";
-        finalJson += "        \"reveals\": [\"VAMBOK.NOMAISKY_" + solarSystem.ToUpper() + "_" + planetName.Replace(' ', '_').ToUpper() + "\"]}\n";
-        finalJson += "    ]\n";
-        finalJson += "},\n";
+        finalJson += "            \"invisibleWhenHidden\": true}\n" +
+            "        ]\n" +
+            "    }\n" +
+            "},\n" +
+            "\"Volumes\": {\n" +
+            "    \"revealVolumes\": [\n" +
+            "        {\"radius\": " + (1.2f * (ringRadius > 0 ? ringRadius : radius)).ToString(CultureInfo.InvariantCulture) + ",\n" +
+            "        \"reveals\": [\"VAMBOK.NOMAISKY_" + solarSystem.ToUpper() + "_" + planetName.Replace(' ', '_').ToUpper() + "\"]}\n" +
+            "    ]\n" +
+            "},\n" +
+            "\"MapMarker\": {\"enabled\": true}\n}";
         AssetsMaker(relativePath, solarSystem, planetName, characteristics);
-        return finalJson + "\"MapMarker\": {\"enabled\": true}\n}";
+        return finalJson;
     }
     void SpriteGenerator(string mode, string path) { SpriteGenerator(mode, path, 0, 0, 0); }
     void SpriteGenerator(string mode, string path, byte colorR, byte colorG, byte colorB, byte colorA = 255, byte[] ringData = null) {
@@ -597,74 +621,74 @@ public class NomaiSky : ModBehaviour {
         byte[] data;
         switch(mode) {
         case "star":
-            width = height = 128;
-            data = new byte[65536];
-            for(int i = 127;i >= 0;i--) {
-                for(int j = 127;j >= 0;j--) {
-                    float radial = (i / 64f - 1) * (i / 64f - 1) + (j / 64f - 1) * (j / 64f - 1) + 0.1f;
+            width = height = 256;
+            data = new byte[4 * width * height];
+            for(int i = height - 1;i >= 0;i--) {
+                for(int j = width - 1;j >= 0;j--) {
+                    float radial = (i * 2f / height - 1) * (i * 2f / height - 1) + (j * 2f / width - 1) * (j * 2f / width - 1) + 0.1f;
                     if(radial < 1) {
-                        data[i * 512 + j * 4 + 3] = colorA;
-                        data[i * 512 + j * 4 + 2] = (byte)(colorB / (0.9f + radial));
-                        data[i * 512 + j * 4 + 1] = (byte)(colorG / (0.9f + radial));
-                        data[i * 512 + j * 4] = (byte)(colorR / (0.9f + radial));
+                        data[i * width * 4 + j * 4 + 3] = colorA;
+                        data[i * width * 4 + j * 4 + 2] = (byte)(colorB / (0.9f + radial));
+                        data[i * width * 4 + j * 4 + 1] = (byte)(colorG / (0.9f + radial));
+                        data[i * width * 4 + j * 4] = (byte)(colorR / (0.9f + radial));
                     } else if(radial < 1.1f) {
-                        data[i * 512 + j * 4 + 3] = colorA;
-                        data[i * 512 + j * 4 + 2] = (byte)((colorB + 255) / 2);
-                        data[i * 512 + j * 4 + 1] = (byte)((colorG + 255) / 2);
-                        data[i * 512 + j * 4] = (byte)((colorR + 255) / 2);
+                        data[i * width * 4 + j * 4 + 3] = colorA;
+                        data[i * width * 4 + j * 4 + 2] = (byte)((colorB + 255) / 2);
+                        data[i * width * 4 + j * 4 + 1] = (byte)((colorG + 255) / 2);
+                        data[i * width * 4 + j * 4] = (byte)((colorR + 255) / 2);
                     } else {
-                        data[i * 512 + j * 4] = data[i * 512 + j * 4 + 1] = data[i * 512 + j * 4 + 2] = data[i * 512 + j * 4 + 3] = 0;
+                        data[i * width * 4 + j * 4] = data[i * width * 4 + j * 4 + 1] = data[i * width * 4 + j * 4 + 2] = data[i * width * 4 + j * 4 + 3] = 0;
                     }
                 }
             }
             break;
         case "planet":
-            width = height = 128;
-            data = new byte[65536];
-            for(int i = 127;i >= 0;i--) {
-                for(int j = 127;j >= 0;j--) {
-                    if((i / 64f - 1) * (i / 64f - 1) + (j / 64f - 1) * (j / 64f - 1) < 1) {
-                        data[i * 512 + j * 4 + 3] = colorA;
-                        data[i * 512 + j * 4 + 2] = colorB;
-                        data[i * 512 + j * 4 + 1] = colorG;
-                        data[i * 512 + j * 4] = colorR;
+            width = height = 256;
+            data = new byte[4 * width * height];
+            for(int i = height - 1;i >= 0;i--) {
+                for(int j = width - 1;j >= 0;j--) {
+                    if((i * 2f / height - 1) * (i * 2f / height - 1) + (j * 2f / width - 1) * (j * 2f / width - 1) < 1) {
+                        data[i * width * 4 + j * 4 + 3] = colorA;
+                        data[i * width * 4 + j * 4 + 2] = colorB;
+                        data[i * width * 4 + j * 4 + 1] = colorG;
+                        data[i * width * 4 + j * 4] = colorR;
                     } else {
-                        data[i * 512 + j * 4] = data[i * 512 + j * 4 + 1] = data[i * 512 + j * 4 + 2] = data[i * 512 + j * 4 + 3] = 0;
+                        data[i * width * 4 + j * 4] = data[i * width * 4 + j * 4 + 1] = data[i * width * 4 + j * 4 + 2] = data[i * width * 4 + j * 4 + 3] = 0;
                     }
                 }
             }
             break;
         case "atmosphere":
-            width = height = 128;
-            data = new byte[65536];
-            for(int i = 127;i >= 0;i--) {
-                for(int j = 127;j >= 0;j--) {
-                    float radial = (i / 64f - 1) * (i / 64f - 1) + (j / 64f - 1) * (j / 64f - 1);
+            width = height = 256;
+            data = new byte[4 * width * height];
+            for(int i = height - 1;i >= 0;i--) {
+                for(int j = width - 1;j >= 0;j--) {
+                    float radial = (i * 2f / height - 1) * (i * 2f / height - 1) + (j * 2f / width - 1) * (j * 2f / width - 1);
                     if(radial < 0.97f) {
-                        data[i * 512 + j * 4 + 3] = colorA;
-                        data[i * 512 + j * 4 + 2] = colorB;
-                        data[i * 512 + j * 4 + 1] = colorG;
-                        data[i * 512 + j * 4] = colorR;
+                        data[i * width * 4 + j * 4 + 3] = colorA;
+                        data[i * width * 4 + j * 4 + 2] = colorB;
+                        data[i * width * 4 + j * 4 + 1] = colorG;
+                        data[i * width * 4 + j * 4] = colorR;
                     } else if(radial < 1) {
-                        data[i * 512 + j * 4 + 3] = colorA;
-                        data[i * 512 + j * 4 + 2] = (byte)((colorB + 255) / 2);
-                        data[i * 512 + j * 4 + 1] = (byte)((colorG + 255) / 2);
-                        data[i * 512 + j * 4] = (byte)((colorR + 255) / 2);
+                        data[i * width * 4 + j * 4 + 3] = colorA;
+                        data[i * width * 4 + j * 4 + 2] = (byte)((colorB + 255) / 2);
+                        data[i * width * 4 + j * 4 + 1] = (byte)((colorG + 255) / 2);
+                        data[i * width * 4 + j * 4] = (byte)((colorR + 255) / 2);
                     } else {
-                        data[i * 512 + j * 4] = data[i * 512 + j * 4 + 1] = data[i * 512 + j * 4 + 2] = data[i * 512 + j * 4 + 3] = 0;
+                        data[i * width * 4 + j * 4] = data[i * width * 4 + j * 4 + 1] = data[i * width * 4 + j * 4 + 2] = data[i * width * 4 + j * 4 + 3] = 0;
                     }
                 }
             }
             break;
         case "map_rings":
             width = height = 256;
-            data = new byte[262144];
-            for(int i = 255;i >= 0;i--) {
-                for(int j = 255;j >= 0;j--) {
-                    data[i * 1024 + j * 4 + 3] = ringData[Mathf.Min(Mathf.FloorToInt(Mathf.Sqrt((i - 128) * (i - 128) + (j - 128) * (j - 128))), 128)];
-                    data[i * 1024 + j * 4 + 2] = colorB;
-                    data[i * 1024 + j * 4 + 1] = colorG;
-                    data[i * 1024 + j * 4] = colorR;
+            data = new byte[4 * width * height];
+            for(int i = height - 1;i >= 0;i--) {
+                for(int j = width - 1;j >= 0;j--) {
+                    data[i * width * 4 + j * 4 + 3] = ringData[Mathf.Min(Mathf.FloorToInt(Mathf.Sqrt((i - height/2) * (i - height/2) + (j - width/2) * (j - width/2))), 128)];
+                    data[i * width * 4 + j * 4 + 2] = colorB;
+                    data[i * width * 4 + j * 4 + 1] = colorG;
+                    data[i * width * 4 + j * 4] = colorR;
                 }
             }
             break;
@@ -673,13 +697,13 @@ public class NomaiSky : ModBehaviour {
             height = 1024;
             byte[] ringDataM = new byte[129];
             ringDataM.Clear();
-            data = new byte[4096];
-            for(int i = 0;i < 1024;i++) {//invert if inner top
-                if(Random128.Rng.Range(0, 205) == 0) {//205 to get around 5 changes (tweakable)
+            data = new byte[4 * width * height];
+            for(int i = 0;i < height;i++) {//invert if inner top
+                if(Random128.Rng.Range(0, Mathf.RoundToInt(height / 5)) == 0) {//to get ~ 5 changes (tweakable)
                     colorA = (byte)Random128.Rng.Range(0, 256);
                 }
-                if(i % Mathf.CeilToInt(1024 / ringData[0]) == 0) {
-                    ringDataM[128 - ringData[0] + i / Mathf.CeilToInt(1024 / ringData[0])] = colorA;
+                if(i % Mathf.CeilToInt(height / ringData[0]) == 0) {
+                    ringDataM[128 - ringData[0] + i / Mathf.CeilToInt(height / ringData[0])] = colorA;
                 }
                 data[i * 4] = colorR;
                 data[i * 4 + 1] = colorG;
@@ -705,13 +729,12 @@ public class NomaiSky : ModBehaviour {
     void AssetsMaker(string relativePath, string starName, string planetName, string characteristics = "A very mysterious planet.") {
         string path = Path.Combine(ModHelper.Manifest.ModFolderPath, relativePath);
         Directory.CreateDirectory(path + "/sprites");
-        string finalXml = "<AstroObjectEntry xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:noNamespaceSchemaLocation=\"https://raw.githubusercontent.com/Outer-Wilds-New-Horizons/new-horizons/main/NewHorizons/Schemas/shiplog_schema.xsd\">\n";
-        finalXml += "<ID>" + planetName.Replace(' ', '_').ToUpper() + "</ID>\n<Entry>\n<ID>ENTRY_" + planetName.Replace(' ', '_').ToUpper() + "</ID>\n<Name>" + planetName + "</Name>\n";
-        finalXml += "<ExploreFact>\n<ID>VAMBOK.NOMAISKY_" + starName.ToUpper() + "_" + planetName.Replace(' ', '_').ToUpper() + "</ID>\n";
-        finalXml += "<Text>" + characteristics + "</Text>\n";
-        finalXml += "</ExploreFact>\n</Entry>\n</AstroObjectEntry>";
         using StreamWriter outputFile = new(path + "/shiplogs.xml");
-        outputFile.Write(finalXml);
+        outputFile.Write("<AstroObjectEntry xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:noNamespaceSchemaLocation=\"https://raw.githubusercontent.com/Outer-Wilds-New-Horizons/new-horizons/main/NewHorizons/Schemas/shiplog_schema.xsd\">\n" +
+            "<ID>" + planetName.Replace(' ', '_').ToUpper() + "</ID>\n<Entry>\n<ID>ENTRY_" + planetName.Replace(' ', '_').ToUpper() + "</ID>\n<Name>" + planetName + "</Name>\n" +
+            "<ExploreFact>\n<ID>VAMBOK.NOMAISKY_" + starName.ToUpper() + "_" + planetName.Replace(' ', '_').ToUpper() + "</ID>\n" +
+            "<Text>" + characteristics + "</Text>\n" +
+            "</ExploreFact>\n</Entry>\n</AstroObjectEntry>");
         SpriteGenerator("fact", relativePath);
     }
     // NAME GENERATION:
@@ -991,15 +1014,15 @@ public class Random128 {
     public static Random128 Rng { get; private set; }
     public static void Initialize(int a, int b, int c, int d) {
         Rng = new Random128(a, b, c, d);
-        for(int i = (a + b + c + d) % 8 + 4;i > 0;i--) {
+        for(int i = (a + b + c + d) % 4 + 3;i > 0;i--) {
             Rng.NextStream().NextUInt();
         }
     }
     public Random128(int seed0, int seed1, int seed2, int seed3) {
         streams[0] = new Xorshift32((uint)seed0);
-        streams[1] = new Xorshift32((uint)seed1);
-        streams[2] = new Xorshift32((uint)seed2);
-        streams[3] = new Xorshift32((uint)seed3);
+        streams[1] = new Xorshift32((uint)seed1 + streams[0].NextUInt());
+        streams[2] = new Xorshift32((uint)seed2 + streams[1].NextUInt());
+        streams[3] = new Xorshift32((uint)seed3 + streams[2].NextUInt());
     }
     private ref Xorshift32 NextStream() {
         cursor = (cursor + 1) % 4;
@@ -1046,63 +1069,61 @@ static class Heightmaps {
         radius = planetRadius / 10;//TODO: tweak this till frequences are great
         int hmWidth = hmHeight * 2;
         int resolution = hmHeight / 4;
-        //perm = Random128.Rng.GeneratePermutations();
         Texture2D tex = new(hmWidth, hmHeight, TextureFormat.RGBA32, false);
         int tX, tY; byte hValue;
         byte[] data = new byte[hmHeight * hmWidth];
 
-        //TEMP
-        Random128.Initialize(1, 5463, 64875, 215);
-        for(int jj = 0;jj < 10;jj++) {
-            perm = Random128.Rng.GeneratePermutations();
+        timer.Reset(); //TEST
+        //Random128.Initialize(1, 5463, 64875, 215);for(int jj = 0;jj < 10;jj++) { //TEST
+        perm = Random128.Rng.GeneratePermutations();
 
-            for(int x = 0;x <= resolution;x++) {
-                for(int y = 0;y <= resolution;y++) {
-                    (tX, tY, hValue) = SetVertex(x, y, 0);
-                    data[tX + tY * hmWidth] = hValue;
-                    (tX, tY, hValue) = SetVertex(x, y, resolution);
-                    data[tX + tY * hmWidth] = hValue;
-                }
+        for(int x = 0;x <= resolution;x++) {
+            for(int y = 0;y <= resolution;y++) {
+                (tX, tY, hValue) = SetVertex(x, y, 0);
+                data[tX + tY * hmWidth] = hValue;
+                (tX, tY, hValue) = SetVertex(x, y, resolution);
+                data[tX + tY * hmWidth] = hValue;
             }
-            for(int x = 1;x < resolution;x++) {
-                for(int y = 0;y <= resolution;y++) {
-                    (tX, tY, hValue) = SetVertex(0, y, x);
-                    data[tX + tY * hmWidth] = hValue;
-                    (tX, tY, hValue) = SetVertex(resolution, y, x);
-                    data[tX + tY * hmWidth] = hValue;
-                }
-            }
-            for(int x = 1;x < resolution;x++) {
-                for(int y = 1;y < resolution;y++) {
-                    (tX, tY, hValue) = SetVertex(x, 0, y);
-                    data[tX + tY * hmWidth] = hValue;
-                    (tX, tY, hValue) = SetVertex(x, resolution, y);
-                    data[tX + tY * hmWidth] = hValue;
-                }
-            }
-            byte[] finalData = new byte[hmHeight * hmWidth * 4];
-            for(int i = 0;i < hmHeight * hmWidth;i++) {
-                finalData[i * 4] = data[i];
-                finalData[i * 4 + 1] = data[i];
-                finalData[i * 4 + 2] = data[i];
-                finalData[i * 4 + 3] = 255;
-            }
-            tex.SetPixelData(finalData, 0);
-            tex.Apply();
-            File.WriteAllBytes(path + "0-" + jj + ".png", ImageConversion.EncodeToPNG(tex));//TEMP normally just path
         }
+        for(int x = 1;x < resolution;x++) {
+            for(int y = 0;y <= resolution;y++) {
+                (tX, tY, hValue) = SetVertex(0, y, x);
+                data[tX + tY * hmWidth] = hValue;
+                (tX, tY, hValue) = SetVertex(resolution, y, x);
+                data[tX + tY * hmWidth] = hValue;
+            }
+        }
+        for(int x = 1;x < resolution;x++) {
+            for(int y = 1;y < resolution;y++) {
+                (tX, tY, hValue) = SetVertex(x, 0, y);
+                data[tX + tY * hmWidth] = hValue;
+                (tX, tY, hValue) = SetVertex(x, resolution, y);
+                data[tX + tY * hmWidth] = hValue;
+            }
+        }
+        byte[] finalData = new byte[hmHeight * hmWidth * 4];
+        for(int i = 0;i < hmHeight * hmWidth;i++) {
+            finalData[i * 4] = data[i];
+            finalData[i * 4 + 1] = data[i];
+            finalData[i * 4 + 2] = data[i];
+            finalData[i * 4 + 3] = 255;
+        }
+        tex.SetPixelData(finalData, 0);
+        tex.Apply();
+        File.WriteAllBytes(path, ImageConversion.EncodeToPNG(tex));
+        //File.WriteAllBytes(path + "0-" + jj + ".png", ImageConversion.EncodeToPNG(tex));} //TEST
         UnityEngine.Object.Destroy(tex);
-        return timer.ElapsedTicks + " (" + timer.ElapsedMilliseconds + "ms)";
+        return timer.ElapsedTicks + " (" + timer.ElapsedMilliseconds + "ms)"; //TEST
     }
     static byte HeightGenerator(Vector3 position) {
         float result, clamp;
-        timer.Start();
+        timer.Start(); //TEST
         result = Noise("large_details", position, -200, 300);
-        if((clamp = Clamp("cubed_mountains", position)) > 0.001f) { result += clamp * (Noise("mountains", position, 0, 750) + Noise("cellular_mountains", position, -1500, 1500)); }
+        if((clamp = Clamp("cubed_mountains", position)) > 0.001f) { result += clamp * (Noise("mountains", position, 0, 750) + Noise("cellular_mountains", position, -1500, 1500)); } //reduced from -2500 2500
         if((clamp = Clamp("cubed_plateaus", position)) > 0.001f) { result += clamp * (Noise("tall_plateaus", position, 0, 150) + Noise("short_plateaus", position, 0, 75)); }
-        //result += Noise("small_details", position, 0, 10);
-        timer.Stop();
-        return (byte)((result + 1700) * 256 / 4485);//(result - sumLows) * 256 / (sumHighs - sumLows)
+        //result += Noise("small_details", position, 0, 10); //too small to see
+        timer.Stop(); //TEST
+        return (byte)((result + 1700) * 256 / 4475);//(result - sumLows) * 256 / (sumHighs - sumLows)
     }
     static float Clamp(string type, Vector3 position) {
         float result;
@@ -1492,11 +1513,16 @@ public static class MyPatchClass {
 }
 
 //TODO:
-//add mysterious artefacts (one / 10 systems) that increase warpPower towards 1
-//add proxies
-//increase sprites resolution
-//test heightmaps
-//test HM without cellular
+//  add mysterious artefacts (one / 10 systems) that increase warpPower towards 1
+//(NEED for V1):
+//  add proxies
+//  add heightmaps mipmap1
+//  add textures
+//  add water level sometimes
+//TO TEST:
+//  increase sprites resolution
+//  HM without cellular
+//  increase heightmap amplitude
 //DONE:
 //  bigger referenceframevolume (entryradius)
 //  galactic key not found
@@ -1508,3 +1534,4 @@ public static class MyPatchClass {
 //  star light too colored
 //  make better global outline sprite
 //  add heightmaps
+//  increase xorshift near-seeded variability
