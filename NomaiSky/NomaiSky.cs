@@ -72,21 +72,6 @@ public class NomaiSky : ModBehaviour {
         //if(newScene != OWScene.SolarSystem) return;
         /*string toto = Heightmaps.CreateHeightmap(Path.Combine(ModHelper.Manifest.ModFolderPath, "planets/heightmap")); //TEST
         ModHelper.Console.WriteLine("HM done! "+toto, MessageType.Success); //TEST*/
-
-        /*new GameObject($"{body.Config.name}_Proxy");
-        NHProxy proxyController = proxy.AddComponent<NHProxy>();
-        proxyController.astroName = body.Config.name;
-        proxyController.planet = planetGO;
-        var rootProxy = new GameObject("Root");
-        rootProxy.transform.parent = proxy.transform;
-        rootProxy.transform.localPosition = Vector3.zero;
-        var success = SharedMake(planetGO, rootProxy, proxyController, body);
-        if(!success) {
-            UnityEngine.Object.Destroy(proxy);
-            return;
-        }
-
-        proxyController.root = rootProxy;*/
     }
     void Update() {
         if(Locator.GetCenterOfTheUniverse() != null) {
@@ -114,7 +99,7 @@ public class NomaiSky : ModBehaviour {
         }
     }
     void LoadCurrentSystem() {
-        ShipLogFactSave getCurrentCenter = null;//PlayerData.GetShipLogFactSave("NomaiSky_currentCenter"); //TEMP TEST
+        ShipLogFactSave getCurrentCenter = null;//PlayerData.GetShipLogFactSave("NomaiSky_currentCenter"); //TEST
         if(getCurrentCenter != null) {
             string s_currentCenter = getCurrentCenter.id;
             s_currentCenter = s_currentCenter.Substring(1, s_currentCenter.Length - 2);
@@ -134,15 +119,15 @@ public class NomaiSky : ModBehaviour {
         if(dx != 0) {
             int xEnd = currentCenter.x + (dx > 0 ? mapRadius : -mapRadius - dx - 1);
             for(int x = currentCenter.x + (dx > 0 ? mapRadius - dx + 1 : -mapRadius);x <= xEnd;x++)
-                for(int y = currentCenter.y - mapRadius;y <= currentCenter.y + mapRadius;y++)
+                for(int y = currentCenter.y - mapRadius / 2;y <= currentCenter.y + mapRadius / 2;y++)
                     for(int z = currentCenter.z - mapRadius;z <= currentCenter.z + mapRadius;z++)
                         if(!galacticMap.ContainsKey((x, y, z)))
                             galacticMap.Add((x, y, z), GetPlaceholder(x, y, z));
         }
         if(dy != 0) {
-            int yEnd = currentCenter.y + (dy > 0 ? mapRadius : -mapRadius - dy - 1);
+            int yEnd = currentCenter.y + (dy > 0 ? mapRadius / 2 : -mapRadius / 2 - dy - 1);
             int xMax = currentCenter.x + mapRadius - Mathf.Max(dx, 0);
-            for(int y = currentCenter.y + (dy > 0 ? mapRadius - dy + 1 : -mapRadius);y <= yEnd;y++)
+            for(int y = currentCenter.y + (dy > 0 ? mapRadius / 2 - dy + 1 : -mapRadius / 2);y <= yEnd;y++)
                 for(int x = currentCenter.x - mapRadius - Mathf.Min(dx, 0);x <= xMax;x++)
                     for(int z = currentCenter.z - mapRadius;z <= currentCenter.z + mapRadius;z++)
                         if(!galacticMap.ContainsKey((x, y, z)))
@@ -151,10 +136,10 @@ public class NomaiSky : ModBehaviour {
         if(dz != 0) {
             int zEnd = currentCenter.z + (dz > 0 ? mapRadius : -mapRadius - dz - 1);
             int xMax = currentCenter.x + mapRadius - Mathf.Max(dx, 0);
-            int yMax = currentCenter.y + mapRadius - Mathf.Max(dy, 0);
+            int yMax = currentCenter.y + mapRadius / 2 - Mathf.Max(dy, 0);
             for(int z = currentCenter.z + (dz > 0 ? mapRadius - dz + 1 : -mapRadius);z <= zEnd;z++)
                 for(int x = currentCenter.x - mapRadius - Mathf.Min(dx, 0);x <= xMax;x++)
-                    for(int y = currentCenter.y - mapRadius - Mathf.Min(dy, 0);y <= yMax;y++)
+                    for(int y = currentCenter.y - mapRadius / 2 - Mathf.Min(dy, 0);y <= yMax;y++)
                         if(!galacticMap.ContainsKey((x, y, z)))
                             galacticMap.Add((x, y, z), GetPlaceholder(x, y, z));
         }
@@ -163,10 +148,10 @@ public class NomaiSky : ModBehaviour {
         GameObject s = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         Material mat = new(Shader.Find("Standard"));
         mat.EnableKeyword("_EMISSION");
-        mat.SetColor("_EmissionColor", new Color(3, 3, 0));
-        mat.SetColor("_Color", Color.black); // Optional
+        //mat.SetColor("_EmissionColor", new Color(3, 3, 0));
+        //mat.SetColor("_Color", Color.black); // Optional
         s.GetComponent<MeshRenderer>().material = mat;
-        s.transform.position = new Vector3(100000, 100000, 0);
+        s.transform.position = new(100000, 100000, 0);
         s.transform.localScale = 2000 * Vector3.one;
         OWRigidbody OWRs = s.AddComponent<OWRigidbody>();
         s.AddComponent<MVBGalacticMap>().Initializator((1, 1, 0), galacticMap[(1, 1, 0)].starName);
@@ -196,10 +181,12 @@ public class NomaiSky : ModBehaviour {
                         if(galacticMap.ContainsKey((currentCenter.x + x, currentCenter.y + y, currentCenter.z + z))) {
                             (_, starName, radius, color, offset) = galacticMap[(currentCenter.x + x, currentCenter.y + y, currentCenter.z + z)];
                             GameObject star = Instantiate(s);
+                            star.name = starName;
                             star.GetComponent<MeshRenderer>().material.SetColor("_EmissionColor", 2 * (Color)color);
                             star.transform.position = 2 * systemRadius * new Vector3(x, y, z) + offset - currentOffset;
                             star.transform.localScale *= radius / 2000;
                             star.GetComponent<MVBGalacticMap>().Initializator((currentCenter.x + x, currentCenter.y + y, currentCenter.z + z), starName);
+                            MakeProxy(starName, star, radius, color);
                         } else {
                             ModHelper.Console.WriteLine("Galactic key not found: " + (currentCenter.x + x, currentCenter.y + y, currentCenter.z + z).ToString(), MessageType.Error);
                         }
@@ -209,6 +196,36 @@ public class NomaiSky : ModBehaviour {
             }
         }
         Destroy(s);
+    }
+    public void MakeProxy(string name, GameObject planetGO, float radius, Color tint) {
+        GameObject proxy = new($"{name}_Proxy");
+        proxy.SetActive(false);
+        NSProxy proxyController = proxy.AddComponent<NSProxy>();
+        proxyController.planet = planetGO;
+        try {
+            GameObject starGO = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            Material mat = new(Shader.Find("Standard"));
+            mat.EnableKeyword("_EMISSION");
+            mat.SetColor("_EmissionColor", 2 * tint);
+            starGO.GetComponent<MeshRenderer>().material = mat;
+            starGO.transform.parent = proxy.transform;
+            starGO.transform.localPosition = Vector3.zero;
+            starGO.transform.localScale = Vector3.one * radius;
+            // Remove all collisions if there are any
+            foreach(Collider col in proxy.GetComponentsInChildren<Collider>()) Destroy(col);
+            foreach(Renderer renderer in proxy.GetComponentsInChildren<Renderer>()) {
+                renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                renderer.receiveShadows = false;
+                renderer.enabled = true;
+            }
+            proxyController._atmosphere = null;
+            proxyController._realObjectDiameter = radius;
+        } catch(Exception ex) {
+            Destroy(proxy);
+            ModHelper.Console.WriteLine($"Exception thrown when generating proxy for [{name}]:\n{ex}", MessageType.Error);
+            return;
+        }
+        proxy.SetActive(true);
     }
 
     // WARPING:
@@ -275,26 +292,24 @@ public class NomaiSky : ModBehaviour {
     }
     void SpawnIntoSystem(string systemName) {
         if(!otherModsSystems.ContainsKey(currentCenter)) {
-            GameObject etoile = NewHorizons.GetPlanet(systemName.Substring(9));
-            if(etoile != null) {
-                Transform shipSpawnPoint = etoile.transform.Find("ShipSpawnPoint");
-                Transform spawnPoint = etoile.transform.Find("PlayerSpawnPoint");
+            GameObject star = NewHorizons.GetPlanet(systemName.Substring(9));
+            if(star != null) {
+                Transform shipSpawnPoint = star.transform.Find("ShipSpawnPoint");
                 if(entryPosition != Vector3.zero) {
                     shipSpawnPoint.position = entryPosition;
                     shipSpawnPoint.rotation = entryRotation;
-                    spawnPoint.position = entryPosition;
-                    spawnPoint.rotation = entryRotation;
                 } else {
                     shipSpawnPoint.position = new Vector3(0, 10000, -34100);
                     shipSpawnPoint.eulerAngles = new Vector3(16.334f, 0, 0);
-                    spawnPoint.position = new Vector3(0, 10000, -34100);
-                    spawnPoint.eulerAngles = new Vector3(16.334f, 0, 0);
                 }
             }
         }
         entryPosition = Vector3.zero;
         ModHelper.Events.Unity.FireInNUpdates(() => {
             if(!otherModsSystems.ContainsKey(currentCenter)) {
+                PlayerSpawner playerSpawner = Locator.GetPlayerBody().GetComponent<PlayerSpawner>();
+                playerSpawner.DebugWarp(playerSpawner.GetSpawnPoint(SpawnLocation.Ship));
+                Locator.GetPlayerSuit().SuitUp();
                 Locator.GetShipBody().GetComponentInChildren<ShipCockpitController>().OnPressInteract();
             }
             if(Locator.GetShipBody().gameObject.GetComponent<WarpController>() == null) {
@@ -394,16 +409,10 @@ public class NomaiSky : ModBehaviour {
             "        \"b\": " + (colorB + 510) / 3 + ",\n" +
             "        \"a\": 255\n" +
             "    },\n" +
-            "    \"solarLuminosity\": " + Random128.Rng.Range(0.3f, 3f).ToString(CultureInfo.InvariantCulture) + ",\n" +
+            "    \"solarLuminosity\": " + Random128.Rng.Range(0.3f, 2f).ToString(CultureInfo.InvariantCulture) + ",\n" +
             "    \"stellarDeathType\": \"none\"\n" +
             "},\n" +
             "\"Spawn\": {\n" +
-            "    \"playerSpawnPoints\": [\n" +
-            "        {\"isDefault\": true,\n\"startWithSuit\": true,\n" +
-            "        \"position\": {\"x\": 0, \"y\": 10000, \"z\": -34100},\n" +
-            "        \"rotation\": {\"x\": 16.334, \"y\": 0, \"z\": 0},\n" +
-            "        \"offset\": {\"x\": 0, \"y\": 0, \"z\": 0}}\n" +
-            "    ],\n" +
             "    \"shipSpawnPoints\": [\n" +
             "        {\"isDefault\": true,\n" +
             "        \"position\": {\"x\": 0, \"y\": 10000, \"z\": -34100},\n" +
@@ -411,7 +420,6 @@ public class NomaiSky : ModBehaviour {
             "    ]\n" +
             "},\n" +
             "\"ShipLog\": {\n" +
-            //"    \"spriteFolder\": \"" + relativePath + "sprites\",\n" +
             "    \"mapMode\": {\n" +
             "        \"revealedSprite\": \"" + relativePath + "map_star.png\",\n" +
             "        \"scale\": " + (radius / 500f).ToString(CultureInfo.InvariantCulture) + ",\n" +
@@ -553,8 +561,8 @@ public class NomaiSky : ModBehaviour {
             "    \"hasRain\": " + (Random128.Rng.Range(0, 6) == 0).ToString().ToLower() + "\n" +
             "},\n" +
             "\"HeightMap\": {\n";
-        stemp = Heightmaps.CreateHeightmap(Path.Combine(ModHelper.Manifest.ModFolderPath, relativePath, "heightmap.png"), radius);
-        ModHelper.Console.WriteLine(planetName+"'s HM done! " + stemp); //TEST
+        Heightmaps.CreateHeightmap(Path.Combine(ModHelper.Manifest.ModFolderPath, relativePath, "heightmap.png"), radius);
+        //ModHelper.Console.WriteLine(planetName+"'s HM done! " + stemp); //TEST
         finalJson += "    \"heightMap\": \"" + relativePath + "heightmap.png\",\n";
         temp = Mathf.Sqrt(radius);
         finalJson += "    \"minHeight\": " + (radius - 3 * temp).ToString(CultureInfo.InvariantCulture) + ",\n" +
@@ -575,15 +583,6 @@ public class NomaiSky : ModBehaviour {
                 "},\n";
         }
         characteristics += ".";
-        /*if(isSpawn) {
-            finalJson += "\"Spawn\": {\n";
-            finalJson += "    \"shipSpawnPoints\": [\n";
-            finalJson += "        {\"position\": {\"x\": 0, \"y\": 10000, \"z\": 0},\n";
-            finalJson += "        \"isDefault\": true,\n";
-            finalJson += "        \"rotation\": {\"x\": 16.334, \"y\": 270, \"z\": 0}}\n";
-            finalJson += "    ]\n";
-            finalJson += "},\n";
-        }*/
         finalJson += "\"ShipLog\": {\n" +
             "    \"spriteFolder\": \"" + relativePath + "sprites\",\n" +
             "    \"xmlFile\": \"" + relativePath + "shiplogs.xml\",\n" +
@@ -955,6 +954,34 @@ public class NomaiSky : ModBehaviour {
     }
 }
 
+public class NSProxy : ProxyPlanet {
+    public GameObject planet;
+    public override void Awake() {
+        base.Awake();
+        _mieCurveMaxVal = 0.1f;
+        _mieCurve = AnimationCurve.EaseInOut(0.0011f, 1, 1, 0);
+        // Start off
+        _outOfRange = false;
+        ToggleRendering(false);
+    }
+    public override void Initialize() {
+        _realObjectTransform = planet.transform;
+    }
+    public override void Update() {
+        if(planet == null || !planet.activeSelf) {
+            _outOfRange = false;
+            ToggleRendering(false);
+            enabled = false;
+            return;
+        }
+        base.Update();
+    }
+    public override void ToggleRendering(bool on) {
+        base.ToggleRendering(on);
+        foreach(Transform child in transform) child.gameObject.SetActive(on);
+    }
+}
+
 public class WarpController : MonoBehaviour {
     ReferenceFrame targetReferenceFrame;
     ScreenPrompt travelPrompt;
@@ -1049,9 +1076,9 @@ public class Random128 {
 
 static class Heightmaps {
     static float radius;
-    static readonly int hmHeight = 204;// = resolution = heightmap width / 2
-    static readonly Stopwatch timer = new();
-    static (int, int, byte) SetVertex(int x, int y, int z) {
+    static readonly int baseRes = 204;// = heightmap height = heightmap width / 2
+    //static readonly Stopwatch timer = new();
+    static (int, int, byte) SetVertex(int x, int y, int z, int hmHeight) {
         int hmWidth = hmHeight * 2;
         Vector3 v2 = (new Vector3(x, y, z) - Vector3.one * hmHeight / 8f).normalized;
         float x2 = v2.x * v2.x, y2 = v2.y * v2.y, z2 = v2.z * v2.z;
@@ -1065,44 +1092,69 @@ static class Heightmaps {
         return ((int)sampleX, (int)(hmHeight * latitude / 180f), HeightGenerator(v.normalized * radius));
     }
 
-    public static string CreateHeightmap(string path, float planetRadius = 500) {
-        radius = planetRadius / 10;//TODO: tweak this till frequences are great
-        int hmWidth = hmHeight * 2;
-        int resolution = hmHeight / 4;
-        Texture2D tex = new(hmWidth, hmHeight, TextureFormat.RGBA32, false);
+    public static void CreateHeightmap(string path, float planetRadius = 500) {
+        radius = planetRadius / 10;//tweak this till frequences are great
+        int hmWidth = baseRes * 2;
+        int resolution = baseRes / 4;
+        Texture2D tex = new(hmWidth, baseRes, TextureFormat.RGBA32, false);
         int tX, tY; byte hValue;
-        byte[] data = new byte[hmHeight * hmWidth];
+        byte[] data = new byte[baseRes * hmWidth];
 
-        timer.Reset(); //TEST
+        //timer.Reset(); //TEST
         //Random128.Initialize(1, 5463, 64875, 215);for(int jj = 0;jj < 10;jj++) { //TEST
         perm = Random128.Rng.GeneratePermutations();
 
         for(int x = 0;x <= resolution;x++) {
             for(int y = 0;y <= resolution;y++) {
-                (tX, tY, hValue) = SetVertex(x, y, 0);
+                (tX, tY, hValue) = SetVertex(x, y, 0, baseRes);
                 data[tX + tY * hmWidth] = hValue;
-                (tX, tY, hValue) = SetVertex(x, y, resolution);
+                (tX, tY, hValue) = SetVertex(x, y, resolution, baseRes);
                 data[tX + tY * hmWidth] = hValue;
             }
         }
         for(int x = 1;x < resolution;x++) {
             for(int y = 0;y <= resolution;y++) {
-                (tX, tY, hValue) = SetVertex(0, y, x);
+                (tX, tY, hValue) = SetVertex(0, y, x, baseRes);
                 data[tX + tY * hmWidth] = hValue;
-                (tX, tY, hValue) = SetVertex(resolution, y, x);
+                (tX, tY, hValue) = SetVertex(resolution, y, x, baseRes);
                 data[tX + tY * hmWidth] = hValue;
             }
         }
         for(int x = 1;x < resolution;x++) {
             for(int y = 1;y < resolution;y++) {
-                (tX, tY, hValue) = SetVertex(x, 0, y);
+                (tX, tY, hValue) = SetVertex(x, 0, y, baseRes);
                 data[tX + tY * hmWidth] = hValue;
-                (tX, tY, hValue) = SetVertex(x, resolution, y);
+                (tX, tY, hValue) = SetVertex(x, resolution, y, baseRes);
                 data[tX + tY * hmWidth] = hValue;
             }
         }
-        byte[] finalData = new byte[hmHeight * hmWidth * 4];
-        for(int i = 0;i < hmHeight * hmWidth;i++) {
+        /*resolution /= 2;
+        for(int x = 0;x <= resolution;x++) {
+            for(int y = 0;y <= resolution;y++) {
+                (tX, tY, hValue) = SetVertex(x, y, 0, baseRes / 2);
+                data[tX * 2 + tY * 2 * hmWidth] = hValue;
+                (tX, tY, hValue) = SetVertex(x, y, resolution, baseRes / 2);
+                data[tX * 2 + tY * 2 * hmWidth] = hValue;
+            }
+        }
+        for(int x = 1;x < resolution;x++) {
+            for(int y = 0;y <= resolution;y++) {
+                (tX, tY, hValue) = SetVertex(0, y, x, baseRes / 2);
+                data[tX * 2 + tY * 2 * hmWidth] = hValue;
+                (tX, tY, hValue) = SetVertex(resolution, y, x, baseRes / 2);
+                data[tX * 2 + tY * 2 * hmWidth] = hValue;
+            }
+        }
+        for(int x = 1;x < resolution;x++) {
+            for(int y = 1;y < resolution;y++) {
+                (tX, tY, hValue) = SetVertex(x, 0, y, baseRes / 2);
+                data[tX * 2 + tY * 2 * hmWidth] = hValue;
+                (tX, tY, hValue) = SetVertex(x, resolution, y, baseRes / 2);
+                data[tX * 2 + tY * 2 * hmWidth] = hValue;
+            }
+        }//*/
+        byte[] finalData = new byte[baseRes * hmWidth * 4];
+        for(int i = 0;i < baseRes * hmWidth;i++) {
             finalData[i * 4] = data[i];
             finalData[i * 4 + 1] = data[i];
             finalData[i * 4 + 2] = data[i];
@@ -1113,16 +1165,16 @@ static class Heightmaps {
         File.WriteAllBytes(path, ImageConversion.EncodeToPNG(tex));
         //File.WriteAllBytes(path + "0-" + jj + ".png", ImageConversion.EncodeToPNG(tex));} //TEST
         UnityEngine.Object.Destroy(tex);
-        return timer.ElapsedTicks + " (" + timer.ElapsedMilliseconds + "ms)"; //TEST
+        //return timer.ElapsedTicks + " (" + timer.ElapsedMilliseconds + "ms)"; //TEST
     }
     static byte HeightGenerator(Vector3 position) {
         float result, clamp;
-        timer.Start(); //TEST
+        //timer.Start(); //TEST
         result = Noise("large_details", position, -200, 300);
         if((clamp = Clamp("cubed_mountains", position)) > 0.001f) { result += clamp * (Noise("mountains", position, 0, 750) + Noise("cellular_mountains", position, -1500, 1500)); } //reduced from -2500 2500
         if((clamp = Clamp("cubed_plateaus", position)) > 0.001f) { result += clamp * (Noise("tall_plateaus", position, 0, 150) + Noise("short_plateaus", position, 0, 75)); }
         //result += Noise("small_details", position, 0, 10); //too small to see
-        timer.Stop(); //TEST
+        //timer.Stop(); //TEST
         return (byte)((result + 1700) * 256 / 4475);//(result - sumLows) * 256 / (sumHighs - sumLows)
     }
     static float Clamp(string type, Vector3 position) {
@@ -1514,19 +1566,16 @@ public static class MyPatchClass {
 
 //TODO:
 //  add mysterious artefacts (one / 10 systems) that increase warpPower towards 1
+//  correct player suit spawn duplicate in ship
 //(NEED for V1):
-//  add proxies
 //  add heightmaps mipmap1
 //  add textures
 //  add water level sometimes
 //TO TEST:
-//  increase sprites resolution
 //  HM without cellular
-//  increase heightmap amplitude
 //DONE:
 //  bigger referenceframevolume (entryradius)
 //  galactic key not found
-//  correct player spawn
 //  make shiplog entries sprites
 //  correct shiplog mapMode
 //  lower map speed close range
@@ -1535,3 +1584,7 @@ public static class MyPatchClass {
 //  make better global outline sprite
 //  add heightmaps
 //  increase xorshift near-seeded variability
+//  increase sprites resolution
+//  increase heightmap amplitude
+//  correct player spawn
+//  add proxies
