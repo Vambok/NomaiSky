@@ -53,12 +53,96 @@ public class NomaiSky : ModBehaviour {
         hasDLC = EntitlementsManager.IsDlcOwned() == EntitlementsManager.AsyncOwnershipStatus.Owned;
         otherModsSystems[(0, 0, 0)] = ("SolarSystem", 2000, new Color32(255, 125, 9, 255), "Sun");
         foreach(IModBehaviour mod in ModHelper.Interaction.GetMods()) {
-            switch(mod.ModHelper.Manifest.UniqueName) {//TODO more
+            switch(mod.ModHelper.Manifest.UniqueName) {//+00(story) +0+(Jams) 00+(Owlks) -0+(crossover) -00(systems) -0-(reals) 00-(fun) +0-(fun story)
             case "GameWyrm.HearthsNeighbor":
                 otherModsSystems[(1, 0, 0)] = ("GameWyrm.HearthsNeighbor", 3000, new Color32(150, 150, 255, 255), "Neighbor Sun");
                 break;
+            case "Etherpod.LuminaTerra":
+                otherModsSystems[(1, 1, 0)] = ("Hornfel's Discovery", 800, new Color32(186, 38, 13, 255), "Enduring Flame");
+                break;
+            case "O32.UnnamedMystery":
+                otherModsSystems[(2, 0, 0)] = ("O32.UnnamedMystery", 1600, new Color32(92, 255, 173, 180), "Aetherion");
+                break;
+            case "O32.TimeDialator":
+                otherModsSystems[(3, 0, 0)] = ("O32.TimeDialator", 1, new Color32(0, 0, 0, 255), "Regularity");
+                break;
+            case "Samster68.FretsQuest":
+                otherModsSystems[(2, 0, 1)] = ("Samster68.BanjoGalaxy", 700, new Color32(200, 220, 250, 255), "White Sun");
+                break;
+            case "smallbug.NHJam1":
+                otherModsSystems[(1, 0, 1)] = ("smallbug.NHJam1", 2000, new Color32(255, 150, 50, 255), "Daylight");
+                break;
+            case "hearth1an.Intervention":
+                otherModsSystems[(2, 0, 2)] = ("UnknownDimension", 150, new Color32(200, 220, 250, 0), "Void Star");
+                break;
+            case "xen.ModJam3":
+                otherModsSystems[(3, 0, 3)] = ("Jam3", 2000, new Color32(120, 150, 250, 255), "Jam 3 Sun");
+                break;
+            case "Echatsum.MisfiredJump":
+                otherModsSystems[(4, 0, 4)] = ("Jam4System", 2000, new Color32(130, 250, 240, 255), "Jam4Sun");
+                break;
+            case "Tetraminus.BrokenBalance":
+                otherModsSystems[(3, 0, 1)] = ("tetraminus.BBSystem", 1000, new Color32(200, 220, 250, 0), "Balance");
+                break;
+            case "AnonymousStrangerOW.TheStrangerTheyAre":
+                otherModsSystems[(0, 0, 1)] = ("AnonymousStrangerOW.StrangerSystem", 2000, new Color32(255, 103, 0, 255), "Nearest Neighbor");
+                break;
+            case "O32.Owlystem":
+                otherModsSystems[(0, -1, 1)] = ("O32.Owlystem", 2000, new Color32(199, 67, 58, 255), "Red Dwarf");
+                break;
+            case "CreativeNameTxt.theirhomeworld":
+                otherModsSystems[(0, 1, 1)] = ("CreativeNameTxt.theirhomeworld"/*"CreativeNameTxt.their homeworld"???*/, 6500, new Color32(39, 230, 230, 255), "Suekondox");
+                break;
+            case "Tandicase.interstellargargantua":
+                otherModsSystems[(-2, 0, 2)] = ("tandicase.Gargantua", 1500, new Color32(255, 170, 0, 255), "Gargantua");
+                break;
+            case "ErroneousCreationist.astroneersolarsystem":
+                otherModsSystems[(-3, 0, 2)] = ("Socialist.AstroneerSystem", 1750, new Color32(227, 255, 250, 255), "Sol");
+                break;
+            case "O32.KSP":
+                otherModsSystems[(-2, 0, 3)] = ("O32.KSP", 4000, new Color32(207, 197, 7, 255), "Kerbol (The Sun)");
+                break;
+            case "bismuthdistrict.9YearOldSystem":
+                otherModsSystems[(-2, 0, 1)] = ("bismuthdistrict.9YearOldSystem", 2000, new Color32(207, 184, 54, 255), "Golden Sun");
+                break;
+            case "Spacepiano.TheSpiralSystem":
+                otherModsSystems[(-1, 0, 0)] = ("Spacepiano.SpiralSystem", 202, new Color32(255, 255, 50, 0), "The Core");
+                break;
+            case "JackFoxtrot.CarsonSystem":
+                otherModsSystems[(-3, 0, 0)] = ("JackFoxtrot.CarsonSystem", 5000, new Color32(255, 166, 77, 255), "Carson");
+                break;
+            case "O32.ssimaak":
+                otherModsSystems[(-2, 0, 0)] = ("O32.O32.Kamika", 4500, new Color32(124, 6, 214, 255), "Purple Sun");
+                otherModsSystems[(-2, 1, 0)] = ("O32.STS2", 1000, new Color32(255, 255, 255, 255), "Blinding Light");
+                otherModsSystems[(-2, 0, -1)] = ("O32.StarSystems", 2048, new Color32(248, 217, 109, 255), "Sol");
+                break;
+            case "MegaPiggy.UpsilonAndromedae":
+                otherModsSystems[(-3, 0, -3)] = ("MegaPiggy.UpsilonAndromedae", 2960, new Color32(181, 158, 25, 255), "Upsilon Andromedae");
+                break;
+            case "smallbug.trappist-1":
+                otherModsSystems[(-4, 0, -4)] = ("smallbug.TRAPPIST-1", 1000, new Color32(255, 100, 0, 255), "TRAPPIST-1");
+                break;
+            case "xen.RealSolarSystem":
+                otherModsSystems[(-5, 0, -5)] = ("xen.RealSolarSystem", 2000, new Color32(255, 158, 45, 255), "Sol");
+                break;
+            case "O32.Discord":
+                otherModsSystems[(-1, 0, -5)] = ("O32.Discord", 1000, new Color32(50, 10, 100, 255), "CIGT(s)U(n)");
+                break;
+            case "Tlya.Grapefruit":
+                otherModsSystems[(0, 0, -4)] = ("tlya.Grapefruit", 1000, new Color32(255, 40, 15, 0), "Grapefruit");
+                break;
+            case "Roggsy.enterthewarioverse":
+                otherModsSystems[(0, 0, -5)] = ("rose.WarioSpace", 1850, new Color32(245, 177, 120, 255), "Wol");
+                break;
+            case "O32.FunnySystem":
+                otherModsSystems[(1, 0, -4)] = ("O32.FunnySystem", 10000, new Color32(150, 0, 0, 0), "RED IMPOSTOR SUS");
+                break;
+            case "2walker2.Evacuation":
+                otherModsSystems[(1, 0, -1)] = ("2walker2.OogaBooga", 700, new Color32(181, 161, 118, 0), "Spark");
+                break;
             default:
-                //otherModsSystems[(x, y, z)] = ("starSystem", "size", new Color32("tint.r", "tint.g", "tint.b", "tint.a"), "name");
+            //case "manifest_uniqueName":
+            //    otherModsSystems[(x, y, z)] = ("starSystem", "size", new Color32("tint.r", "tint.g", "tint.b", "tint.a"), "name");
                 break;
             }
         }
@@ -309,7 +393,8 @@ public class NomaiSky : ModBehaviour {
             if(!otherModsSystems.ContainsKey(currentCenter)) {
                 PlayerSpawner playerSpawner = Locator.GetPlayerBody().GetComponent<PlayerSpawner>();
                 playerSpawner.DebugWarp(playerSpawner.GetSpawnPoint(SpawnLocation.Ship));
-                Locator.GetPlayerSuit().SuitUp();
+                SuitPickupVolume mySuit = Locator.GetShipBody().GetComponentInChildren<SuitPickupVolume>();
+                mySuit.OnPressInteract(mySuit._interactVolume.GetInteractionAt(mySuit._pickupSuitCommandIndex).inputCommand);
                 Locator.GetShipBody().GetComponentInChildren<ShipCockpitController>().OnPressInteract();
             }
             if(Locator.GetShipBody().gameObject.GetComponent<WarpController>() == null) {
@@ -1603,14 +1688,12 @@ public static class MyPatchClass {
 //(NEED for V1):
 //TODO:
 //  add mysterious artefacts (one / 10 systems) that increase warpPower towards 1
-//  correct player suit spawn duplicate in ship
 //  fix space travel
 //  warp loading black (not freeze)
 //MAYBE?:
 //  add heightmaps mipmap1
 //  correct textures, big planets gets higher res?
 //TO TEST:
-//  HM without cellular
 //DONE:
 //  bigger referenceframevolume (entryradius)
 //  galactic key not found
@@ -1629,3 +1712,4 @@ public static class MyPatchClass {
 //  add textures
 //  talk about atmosphere only if big enough
 //  add water level sometimes
+//  add compat mods
