@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using UnityEngine;
-using System.Diagnostics;
+//using System.Diagnostics;
 
 namespace NomaiSky;
 public class NomaiSky : ModBehaviour {
@@ -467,17 +467,24 @@ public class NomaiSky : ModBehaviour {
         };
         finalJson += "    \"gravityFallOff\": \"inverseSquared\"\n" +
             "},\n" +
-            "\"ProcGen\": {\n" +
-            "    \"color\": {\n";
+            "\"HeightMap\": {\n";
         byte colorR = (byte)IGaussianDist(130, 50, 2.5f);
         byte colorG = (byte)IGaussianDist(130, 50, 2.5f);
         byte colorB = (byte)IGaussianDist(130, 50, 2.5f);
         SpriteGenerator("planet", relativePath + "map_planet.png", colorR, colorG, colorB);
-        finalJson += "        \"r\": " + colorR + ",\n" +
+        Heightmaps.CreateHeightmap(Path.Combine(ModHelper.Manifest.ModFolderPath, relativePath), radius, new Color32(colorR, colorG, colorB, 255));
+        //ModHelper.Console.WriteLine(planetName+"'s HM done! " + stemp); //TEST
+        finalJson += "    \"heightMap\": \"" + relativePath + "heightmap.png\",\n";
+        finalJson += "    \"textureMap\": \"" + relativePath + "texture.png\",\n";
+        temp = Mathf.Sqrt(radius);
+        finalJson += "    \"minHeight\": " + (radius - 3 * temp).ToString(CultureInfo.InvariantCulture) + ",\n" +
+            "    \"maxHeight\": " + (radius + 4 * temp).ToString(CultureInfo.InvariantCulture) + ",\n";
+        /*finalJson += "    \"emissionColor\": {\n" +
+            "        \"r\": " + colorR + ",\n" +
             "        \"g\": " + colorG + ",\n" +
             "        \"b\": " + colorB + "\n";
+        finalJson += "    },\n";//*/
         string stemp = GetColorName(new Color32(colorR, colorG, colorB, 255)) + " ";
-        finalJson += "    },\n";
         temp = Mathf.Max(GaussianDist(0, 0.2f, 5), 0);
         finalJson += "    \"smoothness\": " + temp.ToString(CultureInfo.InvariantCulture) + "\n";
         characteristics += temp switch {
@@ -497,10 +504,10 @@ public class NomaiSky : ModBehaviour {
         if(orbiting != "") {
             finalJson += "    \"isMoon\": true,\n" +
                 "    \"primaryBody\": \"" + orbiting + "\",\n";
-            characteristics += "moon, with ";
+            characteristics += "moon";
         } else {
             finalJson += "    \"primaryBody\": \"" + solarSystem + "\",\n";
-            characteristics += "planet, with ";
+            characteristics += "planet";
         }
         finalJson += "    \"semiMajorAxis\": " + orbit + ",\n" +
             "    \"inclination\": " + GaussianDist(0, 10, 9).ToString(CultureInfo.InvariantCulture) + ",\n" +
@@ -509,6 +516,7 @@ public class NomaiSky : ModBehaviour {
             "    \"isTidallyLocked\": " + (Random128.Rng.Range(0, 4) == 0).ToString().ToLower() + "\n" +
             "},\n";
         float ringRadius = 0;
+        stemp = ", with ";
         if(Random128.Rng.Range(0, 10) == 0) {
             finalJson += "\"Rings\": [{\n";
             float ringInnerRadius = GaussianDist(radius * 2, radius / 5);
@@ -523,10 +531,11 @@ public class NomaiSky : ModBehaviour {
             colorG = (byte)IGaussianDist(130, 50, 2.5f);
             colorB = (byte)IGaussianDist(130, 50, 2.5f);
             SpriteGenerator("rings", relativePath, colorR, colorG, colorB, (byte)Mathf.Min(IGaussianDist(200, 50, 4), 255), [(byte)Mathf.CeilToInt(128 * (1 - ringInnerRadius / ringRadius))]);
-            characteristics += GetColorName(new Color32(colorR, colorG, colorB, 255)) + " rings and ";
+            characteristics += stemp + GetColorName(new Color32(colorR, colorG, colorB, 255)) + " rings";
+            stemp = " and ";
         }
+        float atmosphereSize = GaussianDist(radius * 6 / 5, radius / 10, 4);
         finalJson += "\"Atmosphere\": {\n";
-        float atmosphereSize = GaussianDist(radius * 6 / 5, radius / 20, 4);
         finalJson += "    \"size\": " + atmosphereSize.ToString(CultureInfo.InvariantCulture) + ",\n" +
             "    \"atmosphereTint\": {\n";
         colorR = (byte)Mathf.Min(IGaussianDist(200, 50, 4), 255);
@@ -538,18 +547,21 @@ public class NomaiSky : ModBehaviour {
             "        \"g\": " + colorG + ",\n" +
             "        \"b\": " + colorB + ",\n" +
             "        \"a\": " + colorA + "\n";
-        stemp = GetColorName(new Color32(colorR, colorG, colorB, 255));
-        characteristics += (vowels.Contains(stemp[0]) ? "an " : "a ") + stemp + " atmosphere";
         finalJson += "    },\n";
-        if(Random128.Rng.Range(0, 4) == 0) {
-            finalJson += "    \"fogTint\": {\n" +
-                "        \"r\": " + IGaussianDist(130, 50, 2.5f) + ",\n" +
-                "        \"g\": " + IGaussianDist(130, 50, 2.5f) + ",\n" +
-                "        \"b\": " + IGaussianDist(130, 50, 2.5f) + ",\n" +
-                "        \"a\": " + Mathf.Min(IGaussianDist(255, 50, 5), 255) + "\n" +
-                "    },\n" +
-                "    \"fogSize\": " + Random128.Rng.Range(radius, atmosphereSize).ToString(CultureInfo.InvariantCulture) + ",\n" +
-                "    \"fogDensity\": " + Random128.Rng.Range(0f, 1f).ToString(CultureInfo.InvariantCulture) + ",\n";
+        if(atmosphereSize > radius * 6 / 5) {
+            characteristics += stemp;
+            stemp = GetColorName(new Color32(colorR, colorG, colorB, 255));
+            characteristics += (vowels.Contains(stemp[0]) ? "an " : "a ") + stemp + " atmosphere";
+            if(Random128.Rng.Range(0, 4) == 0) {
+                finalJson += "    \"fogTint\": {\n" +
+                    "        \"r\": " + IGaussianDist(130, 50, 2.5f) + ",\n" +
+                    "        \"g\": " + IGaussianDist(130, 50, 2.5f) + ",\n" +
+                    "        \"b\": " + IGaussianDist(130, 50, 2.5f) + ",\n" +
+                    "        \"a\": " + Mathf.Min(IGaussianDist(255, 50, 5), 255) + "\n" +
+                    "    },\n" +
+                    "    \"fogSize\": " + Random128.Rng.Range(radius, atmosphereSize).ToString(CultureInfo.InvariantCulture) + ",\n" +
+                    "    \"fogDensity\": " + Random128.Rng.Range(0f, 1f).ToString(CultureInfo.InvariantCulture) + ",\n";
+            }
         }
         bool hasTrees = Random128.Rng.RandomBool();
         finalJson += "    \"hasOxygen\": " + hasTrees.ToString().ToLower() + ",\n";
@@ -559,14 +571,6 @@ public class NomaiSky : ModBehaviour {
         }
         finalJson += "    \"hasTrees\": " + hasTrees.ToString().ToLower() + ",\n" +
             "    \"hasRain\": " + (Random128.Rng.Range(0, 6) == 0).ToString().ToLower() + "\n" +
-            "},\n" +
-            "\"HeightMap\": {\n";
-        Heightmaps.CreateHeightmap(Path.Combine(ModHelper.Manifest.ModFolderPath, relativePath, "heightmap.png"), radius);
-        //ModHelper.Console.WriteLine(planetName+"'s HM done! " + stemp); //TEST
-        finalJson += "    \"heightMap\": \"" + relativePath + "heightmap.png\",\n";
-        temp = Mathf.Sqrt(radius);
-        finalJson += "    \"minHeight\": " + (radius - 3 * temp).ToString(CultureInfo.InvariantCulture) + ",\n" +
-            "    \"maxHeight\": " + (radius + 4 * temp).ToString(CultureInfo.InvariantCulture) + "\n" +
             "},\n";
         if(hasTrees || fuel) {
             finalJson += "\"Props\": {\n" +
@@ -702,7 +706,7 @@ public class NomaiSky : ModBehaviour {
                     colorA = (byte)Random128.Rng.Range(0, 256);
                 }
                 if(i % Mathf.CeilToInt(height / ringData[0]) == 0) {
-                    ringDataM[128 - ringData[0] + i / Mathf.CeilToInt(height / ringData[0])] = colorA;
+                    ringDataM[128 - ringData[0] + i / Mathf.CeilToInt(height / ringData[0])] = colorA;//ringdata[0]=1-69
                 }
                 data[i * 4] = colorR;
                 data[i * 4 + 1] = colorG;
@@ -1092,13 +1096,14 @@ static class Heightmaps {
         return ((int)sampleX, (int)(hmHeight * latitude / 180f), HeightGenerator(v.normalized * radius));
     }
 
-    public static void CreateHeightmap(string path, float planetRadius = 500) {
+    public static void CreateHeightmap(string path, float planetRadius, Color32 color) {
         radius = planetRadius / 10;//tweak this till frequences are great
         int hmWidth = baseRes * 2;
         int resolution = baseRes / 4;
         Texture2D tex = new(hmWidth, baseRes, TextureFormat.RGBA32, false);
         int tX, tY; byte hValue;
         byte[] data = new byte[baseRes * hmWidth];
+        Array.Fill<byte>(data, 72);
 
         //timer.Reset(); //TEST
         //Random128.Initialize(1, 5463, 64875, 215);for(int jj = 0;jj < 10;jj++) { //TEST
@@ -1153,16 +1158,25 @@ static class Heightmaps {
                 data[tX * 2 + tY * 2 * hmWidth] = hValue;
             }
         }//*/
+        byte[] dataTex = new byte[baseRes * hmWidth * 4];
         byte[] finalData = new byte[baseRes * hmWidth * 4];
         for(int i = 0;i < baseRes * hmWidth;i++) {
             finalData[i * 4] = data[i];
             finalData[i * 4 + 1] = data[i];
             finalData[i * 4 + 2] = data[i];
             finalData[i * 4 + 3] = 255;
+            dataTex[i * 4 + 0] = color.r;
+            dataTex[i * 4 + 1] = color.g;
+            dataTex[i * 4 + 2] = color.b;
+            dataTex[i * 4 + 3] = 255;
         }
         tex.SetPixelData(finalData, 0);
         tex.Apply();
-        File.WriteAllBytes(path, ImageConversion.EncodeToPNG(tex));
+        File.WriteAllBytes(path + "heightmap.png", ImageConversion.EncodeToPNG(tex));
+        //Create texture too:
+        tex.SetPixelData(dataTex, 0);
+        tex.Apply();
+        File.WriteAllBytes(path + "texture.png", ImageConversion.EncodeToPNG(tex));
         //File.WriteAllBytes(path + "0-" + jj + ".png", ImageConversion.EncodeToPNG(tex));} //TEST
         UnityEngine.Object.Destroy(tex);
         //return timer.ElapsedTicks + " (" + timer.ElapsedMilliseconds + "ms)"; //TEST
@@ -1567,12 +1581,16 @@ public static class MyPatchClass {
 //TODO:
 //  add mysterious artefacts (one / 10 systems) that increase warpPower towards 1
 //  correct player suit spawn duplicate in ship
-//(NEED for V1):
-//  add heightmaps mipmap1
-//  add textures
 //  add water level sometimes
+//(NEED for V1):
+//  correct textures
+//  big planets gets higher res??
+//  correct ring sprite
 //TO TEST:
+//  add textures
+//  add heightmaps mipmap1
 //  HM without cellular
+//  talk about atmosphere only if big enough
 //DONE:
 //  bigger referenceframevolume (entryradius)
 //  galactic key not found
