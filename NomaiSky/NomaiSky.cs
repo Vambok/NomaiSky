@@ -92,9 +92,9 @@ public class NomaiSky : ModBehaviour {
         } else {
             string starName = StarNameGen();
             float radius = GaussianDist(4000, 800);
-            byte colorR = (byte)Mathf.Min(IGaussianDist(150), 255);
-            byte colorG = (byte)Mathf.Min(IGaussianDist(150), 255);
-            byte colorB = (byte)Mathf.Min(IGaussianDist(150), 255);
+            byte colorR = BGaussianDist(150);
+            byte colorG = BGaussianDist(150);
+            byte colorB = BGaussianDist(150);
             return ("NomaiSky_" + starName, starName, radius, new Color32(colorR, colorG, colorB, 255), new Vector3(Random128.Rng.Range(entryRadius - systemRadius, systemRadius - entryRadius), Random128.Rng.Range(entryRadius - systemRadius, systemRadius - entryRadius), Random128.Rng.Range(entryRadius - systemRadius, systemRadius - entryRadius)));
         }
     }
@@ -382,9 +382,9 @@ public class NomaiSky : ModBehaviour {
             "\"canShowOnTitle\": false,\n" +
             "\"Base\": {\n";
         float radius = GaussianDist(4000, 800);
-        byte colorR = (byte)Mathf.Min(IGaussianDist(150), 255);
-        byte colorG = (byte)Mathf.Min(IGaussianDist(150), 255);
-        byte colorB = (byte)Mathf.Min(IGaussianDist(150), 255);
+        byte colorR = BGaussianDist(150);
+        byte colorG = BGaussianDist(150);
+        byte colorB = BGaussianDist(150);
         finalJson += "    \"surfaceSize\": " + radius.ToString(CultureInfo.InvariantCulture) + ",\n" +
             "    \"surfaceGravity\": " + GaussianDist(radius * 3 / 500).ToString(CultureInfo.InvariantCulture) + ",\n" +
             "    \"gravityFallOff\": \"inverseSquared\",\n" +
@@ -468,17 +468,17 @@ public class NomaiSky : ModBehaviour {
         finalJson += "    \"gravityFallOff\": \"inverseSquared\"\n" +
             "},\n" +
             "\"HeightMap\": {\n";
-        byte colorR = (byte)IGaussianDist(130, 50, 2.5f);
-        byte colorG = (byte)IGaussianDist(130, 50, 2.5f);
-        byte colorB = (byte)IGaussianDist(130, 50, 2.5f);
+        byte colorR = BGaussianDist(130, 50, 2.5f);
+        byte colorG = BGaussianDist(130, 50, 2.5f);
+        byte colorB = BGaussianDist(130, 50, 2.5f);
         SpriteGenerator("planet", relativePath + "map_planet.png", colorR, colorG, colorB);
         Heightmaps.CreateHeightmap(Path.Combine(ModHelper.Manifest.ModFolderPath, relativePath), radius, new Color32(colorR, colorG, colorB, 255));
         //ModHelper.Console.WriteLine(planetName+"'s HM done! " + stemp); //TEST
-        finalJson += "    \"heightMap\": \"" + relativePath + "heightmap.png\",\n";
-        finalJson += "    \"textureMap\": \"" + relativePath + "texture.png\",\n";
         temp = Mathf.Sqrt(radius);
-        finalJson += "    \"minHeight\": " + (radius - 3 * temp).ToString(CultureInfo.InvariantCulture) + ",\n" +
-            "    \"maxHeight\": " + (radius + 4 * temp).ToString(CultureInfo.InvariantCulture) + ",\n";
+        finalJson += "    \"heightMap\": \"" + relativePath + "heightmap.png\",\n" +
+            "    \"minHeight\": " + (radius - 3 * temp).ToString(CultureInfo.InvariantCulture) + ",\n" +
+            "    \"maxHeight\": " + (radius + 4 * temp).ToString(CultureInfo.InvariantCulture) + ",\n" +
+            "    \"textureMap\": \"" + relativePath + "texture.png\",\n";
         /*finalJson += "    \"emissionColor\": {\n" +
             "        \"r\": " + colorR + ",\n" +
             "        \"g\": " + colorG + ",\n" +
@@ -516,7 +516,6 @@ public class NomaiSky : ModBehaviour {
             "    \"isTidallyLocked\": " + (Random128.Rng.Range(0, 4) == 0).ToString().ToLower() + "\n" +
             "},\n";
         float ringRadius = 0;
-        stemp = ", with ";
         if(Random128.Rng.Range(0, 10) == 0) {
             finalJson += "\"Rings\": [{\n";
             float ringInnerRadius = GaussianDist(radius * 2, radius / 5);
@@ -527,21 +526,33 @@ public class NomaiSky : ModBehaviour {
                 "    \"texture\": \"" + relativePath + "rings.png\",\n" +
                 "    \"fluidType\": \"sand\"\n" +
                 "}],\n";
-            colorR = (byte)IGaussianDist(130, 50, 2.5f);
-            colorG = (byte)IGaussianDist(130, 50, 2.5f);
-            colorB = (byte)IGaussianDist(130, 50, 2.5f);
-            SpriteGenerator("rings", relativePath, colorR, colorG, colorB, (byte)Mathf.Min(IGaussianDist(200, 50, 4), 255), [(byte)Mathf.CeilToInt(128 * (1 - ringInnerRadius / ringRadius))]);
-            characteristics += stemp + GetColorName(new Color32(colorR, colorG, colorB, 255)) + " rings";
+            colorR = BGaussianDist(130, 50, 2.5f);
+            colorG = BGaussianDist(130, 50, 2.5f);
+            colorB = BGaussianDist(130, 50, 2.5f);
+            SpriteGenerator("rings", relativePath, colorR, colorG, colorB, BGaussianDist(200, 50, 4), [(byte)Mathf.CeilToInt(128 * (1 - ringInnerRadius / ringRadius))]);
+            characteristics += ", with " + GetColorName(new Color32(colorR, colorG, colorB, 255)) + " rings";
             stemp = " and ";
+        } else stemp = ", with ";
+        bool hasWaterOxygenTrees = Random128.Rng.Range(0, 5) == 0;
+        if(hasWaterOxygenTrees) {
+            finalJson += "\"Water\": {\n" +
+                "    \"size\": " + GaussianDist(radius, 0.4f * Mathf.Sqrt(radius), 5).ToString(CultureInfo.InvariantCulture) + ",\n" +
+                "    \"tint\": {\n" +
+                "        \"r\": " + BGaussianDist(100, 50, 2) + ",\n" +
+                "        \"g\": " + BGaussianDist(100, 50, 2) + ",\n" +
+                "        \"b\": " + BGaussianDist(255, 50) + ",\n" +
+                "        \"a\": " + BGaussianDist(105, 50) + "\n" +
+                "    }\n" +
+                "},\n";
         }
         float atmosphereSize = GaussianDist(radius * 6 / 5, radius / 10, 4);
-        finalJson += "\"Atmosphere\": {\n";
-        finalJson += "    \"size\": " + atmosphereSize.ToString(CultureInfo.InvariantCulture) + ",\n" +
+        finalJson += "\"Atmosphere\": {\n" +
+            "    \"size\": " + atmosphereSize.ToString(CultureInfo.InvariantCulture) + ",\n" +
             "    \"atmosphereTint\": {\n";
-        colorR = (byte)Mathf.Min(IGaussianDist(200, 50, 4), 255);
-        colorG = (byte)Mathf.Min(IGaussianDist(200, 50, 4), 255);
-        colorB = (byte)Mathf.Min(IGaussianDist(200, 50, 4), 255);
-        byte colorA = (byte)Mathf.Min(IGaussianDist(255, 50, 5), 255);
+        colorR = BGaussianDist(200, 50, 4);
+        colorG = BGaussianDist(200, 50, 4);
+        colorB = BGaussianDist(200, 50, 4);
+        byte colorA = BGaussianDist(255, 50, 5);
         SpriteGenerator("atmosphere", relativePath + "map_atmosphere.png", colorR, colorG, colorB, colorA);
         finalJson += "        \"r\": " + colorR + ",\n" +
             "        \"g\": " + colorG + ",\n" +
@@ -554,31 +565,38 @@ public class NomaiSky : ModBehaviour {
             characteristics += (vowels.Contains(stemp[0]) ? "an " : "a ") + stemp + " atmosphere";
             if(Random128.Rng.Range(0, 4) == 0) {
                 finalJson += "    \"fogTint\": {\n" +
-                    "        \"r\": " + IGaussianDist(130, 50, 2.5f) + ",\n" +
-                    "        \"g\": " + IGaussianDist(130, 50, 2.5f) + ",\n" +
-                    "        \"b\": " + IGaussianDist(130, 50, 2.5f) + ",\n" +
-                    "        \"a\": " + Mathf.Min(IGaussianDist(255, 50, 5), 255) + "\n" +
+                    "        \"r\": " + BGaussianDist(130, 50, 2.5f) + ",\n" +
+                    "        \"g\": " + BGaussianDist(130, 50, 2.5f) + ",\n" +
+                    "        \"b\": " + BGaussianDist(130, 50, 2.5f) + ",\n" +
+                    "        \"a\": " + BGaussianDist(255, 50, 5) + "\n" +
                     "    },\n" +
                     "    \"fogSize\": " + Random128.Rng.Range(radius, atmosphereSize).ToString(CultureInfo.InvariantCulture) + ",\n" +
                     "    \"fogDensity\": " + Random128.Rng.Range(0f, 1f).ToString(CultureInfo.InvariantCulture) + ",\n";
             }
         }
-        bool hasTrees = Random128.Rng.RandomBool();
-        finalJson += "    \"hasOxygen\": " + hasTrees.ToString().ToLower() + ",\n";
-        if(hasTrees) {
-            characteristics += ". There seems to be oxygen";
-            hasTrees = Random128.Rng.RandomBool();
+        if(hasWaterOxygenTrees) {
+            characteristics += ". There's water on the planet";
+            hasWaterOxygenTrees = Random128.Rng.Range(0, 4) != 0;
+            stemp = ", and t";
+        } else {
+            hasWaterOxygenTrees = Random128.Rng.RandomBool();
+            stemp = ". T";
         }
-        finalJson += "    \"hasTrees\": " + hasTrees.ToString().ToLower() + ",\n" +
+        finalJson += "    \"hasOxygen\": " + hasWaterOxygenTrees.ToString().ToLower() + ",\n";
+        if(hasWaterOxygenTrees) {
+            characteristics += stemp + "here seems to be oxygen";
+            hasWaterOxygenTrees = Random128.Rng.RandomBool();
+        }
+        finalJson += "    \"hasTrees\": " + hasWaterOxygenTrees.ToString().ToLower() + ",\n" +
             "    \"hasRain\": " + (Random128.Rng.Range(0, 6) == 0).ToString().ToLower() + "\n" +
             "},\n";
-        if(hasTrees || fuel) {
+        if(hasWaterOxygenTrees || fuel) {
             finalJson += "\"Props\": {\n" +
                 "    \"scatter\": [\n";
             if(fuel) {
-                finalJson += "{\"path\": \"" + (hasDLC ? "RingWorld_Body/Sector_RingInterior/Sector_Zone2/Structures_Zone2/EyeTempleRuins_Zone2/Interactables_EyeTempleRuins_Zone2/Prefab_IP_FuelTorch (1)\"" : "CaveTwin_Body/Sector_CaveTwin/Sector_NorthHemisphere/Sector_NorthSurface/Sector_Lakebed/Interactables_Lakebed/Prefab_HEA_FuelTank\", \"rotation\": {\"x\": 30, \"y\": 0, \"z\": 270}") + ", \"count\": 1}" + (hasTrees ? "," : "") + "\n";
+                finalJson += "{\"path\": \"" + (hasDLC ? "RingWorld_Body/Sector_RingInterior/Sector_Zone2/Structures_Zone2/EyeTempleRuins_Zone2/Interactables_EyeTempleRuins_Zone2/Prefab_IP_FuelTorch (1)\"" : "CaveTwin_Body/Sector_CaveTwin/Sector_NorthHemisphere/Sector_NorthSurface/Sector_Lakebed/Interactables_Lakebed/Prefab_HEA_FuelTank\", \"rotation\": {\"x\": 30, \"y\": 0, \"z\": 270}") + ", \"count\": 1}" + (hasWaterOxygenTrees ? "," : "") + "\n";
             }
-            if(hasTrees) {
+            if(hasWaterOxygenTrees) {
                 finalJson += "        {\"path\": \"" + (hasDLC ? "DreamWorld_Body/Sector_DreamWorld/Sector_Underground/IslandsRoot/IslandPivot_B/Island_B/Props_Island_B/Tree_DW_L (3)" : "QuantumMoon_Body/Sector_QuantumMoon/State_TH/Interactables_THState/Crater_1/Crater_1_QRedwood/QRedwood (2)/Prefab_TH_Redwood") + "\", \"count\": " + IGaussianDist(radius * radius / 1250) + ", \"scale\": " + GaussianDist(1, 0.2f).ToString(CultureInfo.InvariantCulture) + "},\n" +
                     "        {\"path\": \"" + (hasDLC ? "DreamWorld_Body/Sector_DreamWorld/Sector_DreamZone_4/Props_DreamZone_4_Upper/Tree_DW_S_B" : "QuantumMoon_Body/Sector_QuantumMoon/State_TH/Interactables_THState/Crater_3/Crater_3_Sapling/QSapling/Tree_TH_Sapling") + "\", \"count\": " + IGaussianDist(radius * radius / 1250) + ", \"scale\": " + GaussianDist(1, 0.2f).ToString(CultureInfo.InvariantCulture) + "}\n";
                 characteristics += " and trees";
@@ -699,7 +717,7 @@ public class NomaiSky : ModBehaviour {
             width = 1;
             height = 1024;
             byte[] ringDataM = new byte[129];
-            ringDataM.Clear();
+            //ringDataM.Clear();
             data = new byte[4 * width * height];
             for(int i = 0;i < height;i++) {//invert if inner top
                 if(Random128.Rng.Range(0, Mathf.RoundToInt(height / 5)) == 0) {//to get ~ 5 changes (tweakable)
@@ -713,6 +731,7 @@ public class NomaiSky : ModBehaviour {
                 data[i * 4 + 2] = colorB;
                 data[i * 4 + 3] = colorA;
             }
+            ringDataM[128] = 0;
             SpriteGenerator("map_rings", path + "map_rings.png", colorR, colorG, colorB, 255, ringDataM);
             path += "rings.png";
             break;
@@ -803,6 +822,9 @@ public class NomaiSky : ModBehaviour {
     }
 
     // UTILS:
+    byte BGaussianDist(float mean, float sigma = 0, float limit = 3) {
+        return (byte)Mathf.Clamp(IGaussianDist(mean, sigma, limit), 0, 255);
+    }
     int IGaussianDist(float mean, float sigma = 0, float limit = 3) {
         return Mathf.RoundToInt(GaussianDist(mean, sigma, limit));
     }
@@ -1103,7 +1125,7 @@ static class Heightmaps {
         Texture2D tex = new(hmWidth, baseRes, TextureFormat.RGBA32, false);
         int tX, tY; byte hValue;
         byte[] data = new byte[baseRes * hmWidth];
-        Array.Fill<byte>(data, 72);
+        Array.Fill<byte>(data, 100);
 
         //timer.Reset(); //TEST
         //Random128.Initialize(1, 5463, 64875, 215);for(int jj = 0;jj < 10;jj++) { //TEST
@@ -1578,19 +1600,17 @@ public static class MyPatchClass {
     }
 }
 
+//(NEED for V1):
 //TODO:
 //  add mysterious artefacts (one / 10 systems) that increase warpPower towards 1
 //  correct player suit spawn duplicate in ship
-//  add water level sometimes
-//(NEED for V1):
-//  correct textures
-//  big planets gets higher res??
-//  correct ring sprite
-//TO TEST:
-//  add textures
+//  fix space travel
+//  warp loading black (not freeze)
+//MAYBE?:
 //  add heightmaps mipmap1
+//  correct textures, big planets gets higher res?
+//TO TEST:
 //  HM without cellular
-//  talk about atmosphere only if big enough
 //DONE:
 //  bigger referenceframevolume (entryradius)
 //  galactic key not found
@@ -1606,3 +1626,6 @@ public static class MyPatchClass {
 //  increase heightmap amplitude
 //  correct player spawn
 //  add proxies
+//  add textures
+//  talk about atmosphere only if big enough
+//  add water level sometimes
