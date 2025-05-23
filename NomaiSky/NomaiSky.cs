@@ -461,56 +461,65 @@ public class NomaiSky : ModBehaviour {
     }
     string StarCreator(string solarSystem) {
         string relativePath = "planets/" + solarSystem + "/" + solarSystem + "/";
-        string finalJson = "{\n\"name\": \"" + solarSystem + "\",\n" +
-            "\"$schema\": \"https://raw.githubusercontent.com/Outer-Wilds-New-Horizons/new-horizons/main/NewHorizons/Schemas/body_schema.json\",\n" +
-            "\"starSystem\": \"NomaiSky_" + solarSystem + "\",\n" +
-            "\"canShowOnTitle\": false,\n" +
-            "\"Base\": {\n";
+        string finalJson = $$"""
+            {
+                "name": "{{solarSystem}}",
+                "$schema": "https://raw.githubusercontent.com/Outer-Wilds-New-Horizons/new-horizons/main/NewHorizons/Schemas/body_schema.json",
+                "starSystem": "NomaiSky_{{solarSystem}}",
+                "canShowOnTitle": false,
+                "Base": {
+            """;
         float radius = GaussianDist(4000, 800);
         byte colorR = BGaussianDist(150);
         byte colorG = BGaussianDist(150);
         byte colorB = BGaussianDist(150);
-        finalJson += "    \"surfaceSize\": " + radius.ToString(CultureInfo.InvariantCulture) + ",\n" +
-            "    \"surfaceGravity\": " + GaussianDist(radius * 3 / 500).ToString(CultureInfo.InvariantCulture) + ",\n" +
-            "    \"gravityFallOff\": \"inverseSquared\",\n" +
-            "    \"centerOfSolarSystem\": true\n" +
-            "},\n" +
-            "\"Orbit\": {\n" +
-            "    \"showOrbitLine\": false,\n" +
-            "    \"isStatic\": true\n" +
-            "},\n" +
-            "\"Star\": {\n" +
-            "    \"size\": " + radius.ToString(CultureInfo.InvariantCulture) + ",\n" +
-            "    \"tint\": {\n";
+        finalJson += $$"""
+                "surfaceSize": {{radius.ToString(CultureInfo.InvariantCulture)}},
+                "surfaceGravity": "{{GaussianDist(radius * 3 / 500).ToString(CultureInfo.InvariantCulture)}}",
+                "gravityFallOff": "inverseSquared",
+                "centerOfSolarSystem": true
+            },
+            "Orbit": {
+                "showOrbitLine": false,
+                "isStatic": true
+            },
+            "Star": {
+                "size": {{radius.ToString(CultureInfo.InvariantCulture)}},
+                "tint": {
+            """;
         SpriteGenerator("star", relativePath + "map_star.png", colorR, colorG, colorB);
-        finalJson += "        \"r\": " + colorR + ",\n" +
-            "        \"g\": " + colorG + ",\n" +
-            "        \"b\": " + colorB + ",\n" +
-            "        \"a\": 255\n" +
-            "    },\n" +
-            "    \"lightTint\": {\n" +
-            "        \"r\": " + (colorR + 510) / 3 + ",\n" +
-            "        \"g\": " + (colorG + 510) / 3 + ",\n" +
-            "        \"b\": " + (colorB + 510) / 3 + ",\n" +
-            "        \"a\": 255\n" +
-            "    },\n" +
-            "    \"solarLuminosity\": " + Random128.Rng.Range(0.3f, 2f).ToString(CultureInfo.InvariantCulture) + ",\n" +
-            "    \"stellarDeathType\": \"none\"\n" +
-            "},\n" +
-            "\"Spawn\": {\n" +
-            "    \"shipSpawnPoints\": [\n" +
-            "        {\"isDefault\": true,\n" +
-            "        \"position\": {\"x\": 0, \"y\": 10000, \"z\": -34100},\n" +
-            "        \"rotation\": {\"x\": 16.334, \"y\": 0, \"z\": 0}}\n" +
-            "    ]\n" +
-            "},\n" +
-            "\"ShipLog\": {\n" +
-            "    \"mapMode\": {\n" +
-            "        \"revealedSprite\": \"" + relativePath + "map_star.png\",\n" +
-            "        \"scale\": " + (radius / 500f).ToString(CultureInfo.InvariantCulture) + ",\n" +
-            "        \"selectable\": false\n" +
-            "    }\n" +
-            "}\n}";
+        finalJson += $$"""
+                    "r": {{colorR}},
+                    "g": {{colorG}},
+                    "b": {{colorB}},
+                    "a": 255
+                },
+                "lightTint": {
+                    "r": {{(colorR + 510) / 3}},
+                    "g": {{(colorG + 510) / 3}},
+                    "b": {{(colorB + 510) / 3}},
+                    "a": 255
+                },
+                "solarLuminosity": {{Random128.Rng.Range(0.3f, 2f).ToString(CultureInfo.InvariantCulture)}},
+                "stellarDeathType": "none"
+            },
+            "Spawn": {
+                "shipSpawnPoints": [
+                    {
+                        "isDefault": true,
+                        "position": {"x": 0, "y": 10000, "z": -34100},
+                        "rotation": {"x": 16.334, "y": 0, "z": 0}
+                    }
+                ]
+            },
+            "ShipLog": {
+                "mapMode": {
+                    "revealedSprite": "{{relativePath}}map_star.png",
+                    "scale": {{(radius / 500f).ToString(CultureInfo.InvariantCulture)}},
+                    "selectable": false
+                }
+            }
+            """;
         return finalJson;
     }
     string PlanetCreator(string solarSystem, string planetName, int orbit, bool fuel, string orbiting = "") {
