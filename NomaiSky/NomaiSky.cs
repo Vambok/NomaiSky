@@ -33,6 +33,7 @@ public class NomaiSky : ModBehaviour {
     Quaternion entryRotation;
     // GENERATION:
     readonly int galaxyName = 0;
+    const string version = "0.2.1";//Changing this will cause a rebuild of all previously visited systems, increment only when changing the procedural generation!
 
     // START:
     public void Awake() {
@@ -69,17 +70,17 @@ public class NomaiSky : ModBehaviour {
             case "Samster68.FretsQuest":
                 otherModsSystems[(2, 0, 1)] = ("Samster68.BanjoGalaxy", 700, new Color32(200, 220, 250, 255), "White Sun");
                 break;
-            case "smallbug.NHJam1":
-                otherModsSystems[(1, 0, 1)] = ("smallbug.NHJam1", 2000, new Color32(255, 150, 50, 255), "Daylight");
+            case "xen.ModJam3":
+                otherModsSystems[(1, 0, 1)] = ("Jam3", 2000, new Color32(120, 150, 250, 255), "Jam 3 Sun");
                 break;
             case "hearth1an.Intervention":
                 otherModsSystems[(2, 0, 2)] = ("UnknownDimension", 150, new Color32(200, 220, 250, 0), "Void Star");
                 break;
-            case "xen.ModJam3":
-                otherModsSystems[(3, 0, 3)] = ("Jam3", 2000, new Color32(120, 150, 250, 255), "Jam 3 Sun");
+            case "smallbug.NHJam1":
+                otherModsSystems[(2, 0, 3)] = ("smallbug.NHJam1", 2000, new Color32(255, 150, 50, 255), "Daylight");
                 break;
             case "Echatsum.MisfiredJump":
-                otherModsSystems[(4, 0, 4)] = ("Jam4System", 2000, new Color32(130, 250, 240, 255), "Jam4Sun");
+                otherModsSystems[(3, 0, 3)] = ("Jam4System", 2000, new Color32(130, 250, 240, 255), "Jam4Sun");
                 break;
             case "Tetraminus.BrokenBalance":
                 otherModsSystems[(3, 0, 1)] = ("tetraminus.BBSystem", 1000, new Color32(200, 220, 250, 0), "Balance");
@@ -174,11 +175,7 @@ public class NomaiSky : ModBehaviour {
             (string name, float radius, Color32 color, string starName) = otherModsSystems[(x, y, z)];
             return (name, starName, radius, color, new Vector3(Random128.Rng.Range(entryRadius - systemRadius, systemRadius - entryRadius), Random128.Rng.Range(entryRadius - systemRadius, systemRadius - entryRadius), Random128.Rng.Range(entryRadius - systemRadius, systemRadius - entryRadius)));
         } else {
-            string starName = StarNameGen();
-            float radius = GaussianDist(4000, 800);
-            byte colorR = BGaussianDist(150);
-            byte colorG = BGaussianDist(150);
-            byte colorB = BGaussianDist(150);
+            StarInitializator(out string starName, out float radius, out byte colorR, out byte colorG, out byte colorB);
             return ("NomaiSky_" + starName, starName, radius, new Color32(colorR, colorG, colorB, 255), new Vector3(Random128.Rng.Range(entryRadius - systemRadius, systemRadius - entryRadius), Random128.Rng.Range(entryRadius - systemRadius, systemRadius - entryRadius), Random128.Rng.Range(entryRadius - systemRadius, systemRadius - entryRadius)));
         }
     }
@@ -349,14 +346,16 @@ public class NomaiSky : ModBehaviour {
         if(!visited.Contains(newCoords)) {
             DictUpdate(currentCenter.x - x, currentCenter.y - y, currentCenter.z - z);
             if(!otherModsSystems.ContainsKey(newCoords)) {
-                Random128.Initialize(galaxyName, currentCenter.x, currentCenter.y, currentCenter.z);
-                string starName = StarNameGen();
+                StarInitializator(out string starName, out float radius, out byte colorR, out byte colorG, out byte colorB);
                 string systemPath = Path.Combine(ModHelper.Manifest.ModFolderPath, "systems", "NomaiSky_" + starName + ".json");
-                if(!File.Exists(systemPath)) {
-                    waitForWrite = true;
+                waitForWrite = true;
+                if(File.Exists(systemPath)) {
+                    string[] split = File.ReadAllText(systemPath).Split(["\"version\":"], StringSplitOptions.None);
+                    if(split.Length > 1 && split[1].Split('}')[0] == version) waitForWrite = false;
+                }
+                if(waitForWrite) {
                     try {
-                        using StreamWriter outputFile = new(systemPath);
-                        outputFile.Write(SystemCreator(starName));
+                        File.WriteAllText(systemPath, SystemCreator(starName, radius, colorR, colorG, colorB));
                     } catch(ArgumentException e) {
                         ModHelper.Console.WriteLine($"Cannot write system file! {e.Message}", MessageType.Error);
                     } finally {
@@ -406,11 +405,18 @@ public class NomaiSky : ModBehaviour {
     }
 
     // GENERATION:
-    string SystemCreator(string systemName) {
+    void StarInitializator(out string starName, out float radius, out byte colorR, out byte colorG, out byte colorB) {
+        Random128.Initialize(galaxyName, currentCenter.x, currentCenter.y, currentCenter.z);
+        starName = StarNameGen();
+        radius = GaussianDist(4000, 800);
+        colorR = BGaussianDist(150);
+        colorG = BGaussianDist(150);
+        colorB = BGaussianDist(150);
+    }
+    string SystemCreator(string systemName, float radius, byte colorR, byte colorG, byte colorB) {
         string path = Path.Combine(ModHelper.Manifest.ModFolderPath, "planets", systemName);
         Directory.CreateDirectory(path + "/" + systemName);
-        using StreamWriter starOutputFile = new(Path.Combine(path, systemName, systemName + ".json"));
-        starOutputFile.Write(StarCreator(systemName));
+        File.WriteAllText(Path.Combine(path, systemName, systemName + ".json"), StarCreator(systemName, radius, colorR, colorG, colorB));
         int nbPlanets = Mathf.CeilToInt(GaussianDist(4, 2, 2));
         int fuelPlanet = Random128.Rng.Range(0, nbPlanets);
         int fuelMoon = -1;
@@ -440,27 +446,26 @@ public class NomaiSky : ModBehaviour {
             }
             string planetName = PlanetNameGen();
             Directory.CreateDirectory(Path.Combine(path, planetName));
-            using StreamWriter planetOutputFile = new(Path.Combine(path, planetName, planetName + ".json"));
-            planetOutputFile.Write(PlanetCreator(systemName, planetName, orbits[i] + 8500 * i + 10500, (i == fuelPlanet && fuelMoon < 0)));//, "", i == Mathf.FloorToInt(nbPlanets / 2f)));
+            File.WriteAllText(Path.Combine(path, planetName, planetName + ".json"), PlanetCreator(systemName, planetName, orbits[i] + 8500 * i + 10500, (i == fuelPlanet && fuelMoon < 0)));
             if(nbMoons > 0) {
                 int[] moonOrbits = new int[nbMoons];
                 int allowedMoonOrbits = 3000 - (nbMoons * 500);
                 for(int j = 0;j < nbMoons;j++) {
-                    moonOrbits[j] = Random128.Rng.Range(0, allowedOrbits);
+                    moonOrbits[j] = Random128.Rng.Range(0, allowedMoonOrbits);
                 }
                 Array.Sort(moonOrbits);
                 for(int j = 0;j < nbMoons;j++) {
                     string moonName = PlanetNameGen(true);
                     Directory.CreateDirectory(Path.Combine(path, planetName, moonName.Replace(' ', '_')));
-                    using StreamWriter outputMoonFile = new(Path.Combine(path, planetName, moonName.Replace(' ', '_'), moonName.Replace(' ', '_') + ".json"));
-                    outputMoonFile.Write(PlanetCreator(systemName, moonName, moonOrbits[j] + 500 * j + 1320, j == fuelMoon, planetName));
+                    File.WriteAllText(Path.Combine(path, planetName, moonName.Replace(' ', '_'), moonName.Replace(' ', '_') + ".json"), PlanetCreator(systemName, moonName, moonOrbits[j] + 500 * j + 1320, j == fuelMoon, planetName));
                 }
             }
         }
-        return """{"$schema":"https://raw.githubusercontent.com/Outer-Wilds-New-Horizons/new-horizons/main/NewHorizons/Schemas/star_system_schema.json","respawnHere": true}""";
+        return "{\"extras\":{\"mod_config\":{\"version\":" + version + "}},\"$schema\":\"https://raw.githubusercontent.com/Outer-Wilds-New-Horizons/new-horizons/main/NewHorizons/Schemas/star_system_schema.json\",\"respawnHere\":true}";
     }
-    string StarCreator(string solarSystem) {
+    string StarCreator(string solarSystem, float radius, byte colorR, byte colorG, byte colorB) {
         string relativePath = "planets/" + solarSystem + "/" + solarSystem + "/";
+        SpriteGenerator("star", relativePath + "map_star.png", colorR, colorG, colorB);
         string finalJson = $$"""
             {
                 "name": "{{solarSystem}}",
@@ -468,12 +473,6 @@ public class NomaiSky : ModBehaviour {
                 "starSystem": "NomaiSky_{{solarSystem}}",
                 "canShowOnTitle": false,
                 "Base": {
-            """;
-        float radius = GaussianDist(4000, 800);
-        byte colorR = BGaussianDist(150);
-        byte colorG = BGaussianDist(150);
-        byte colorB = BGaussianDist(150);
-        finalJson += $$"""
                 "surfaceSize": {{radius.ToString(CultureInfo.InvariantCulture)}},
                 "surfaceGravity": "{{GaussianDist(radius * 3 / 500).ToString(CultureInfo.InvariantCulture)}}",
                 "gravityFallOff": "inverseSquared",
@@ -486,9 +485,6 @@ public class NomaiSky : ModBehaviour {
             "Star": {
                 "size": {{radius.ToString(CultureInfo.InvariantCulture)}},
                 "tint": {
-            """;
-        SpriteGenerator("star", relativePath + "map_star.png", colorR, colorG, colorB);
-        finalJson += $$"""
                     "r": {{colorR}},
                     "g": {{colorG}},
                     "b": {{colorB}},
@@ -845,8 +841,7 @@ public class NomaiSky : ModBehaviour {
     void AssetsMaker(string relativePath, string starName, string planetName, string characteristics = "A very mysterious planet.") {
         string path = Path.Combine(ModHelper.Manifest.ModFolderPath, relativePath);
         Directory.CreateDirectory(path + "/sprites");
-        using StreamWriter outputFile = new(path + "/shiplogs.xml");
-        outputFile.Write("<AstroObjectEntry xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:noNamespaceSchemaLocation=\"https://raw.githubusercontent.com/Outer-Wilds-New-Horizons/new-horizons/main/NewHorizons/Schemas/shiplog_schema.xsd\">\n" +
+        File.WriteAllText(path + "/shiplogs.xml", "<AstroObjectEntry xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:noNamespaceSchemaLocation=\"https://raw.githubusercontent.com/Outer-Wilds-New-Horizons/new-horizons/main/NewHorizons/Schemas/shiplog_schema.xsd\">\n" +
             "<ID>" + planetName.Replace(' ', '_').ToUpper() + "</ID>\n<Entry>\n<ID>ENTRY_" + planetName.Replace(' ', '_').ToUpper() + "</ID>\n<Name>" + planetName + "</Name>\n" +
             "<ExploreFact>\n<ID>VAMBOK.NOMAISKY_" + starName.ToUpper() + "_" + planetName.Replace(' ', '_').ToUpper() + "</ID>\n" +
             "<Text>" + characteristics + "</Text>\n" +
