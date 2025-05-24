@@ -1,4 +1,5 @@
-![Nomai's Sky Banner](https://github.com/user-attachments/assets/db04c8bc-fc3c-4f3f-8b5e-ff8d6fffc417)
+![Nomai's Sky Banner](https://github.com/user-attachments/assets/da5bc69f-1730-4ddc-97b8-77ae38793335)
+
 # Nomai's Sky *(beta version)*
 
 A procedurally generated universe of near infinite possibilities!
@@ -10,8 +11,8 @@ A procedurally generated universe of near infinite possibilities!
 - No added Bramble, and anglerfish free*
 - If you have other mods installed you may be able to find them among the stars...
 
-(Ps: don't worry, no star will blow up)\
-\
-\
-*\*only in star systems originating from this mod
-ⁿᵒ ᵍᵘᵃʳᵃⁿᵗᵉᵉ ᵍˡᵛᵉⁿ ᵃⁿᵈ ᵐᵒᵈ ᶜʳᵉᵃᵗᵒʳ ʷˡˡˡ ˢʸˢᵗᵉᵐᵃᵗˡᶜᵃˡˡʸ ˡᵍⁿᵒʳᵉ ᵃⁿʸ ʳᵉᶜˡᵃᵐᵃᵗˡᵒⁿ*
+(Ps: don't worry, no star will blow up)  
+  
+  
+\**only in star systems originating from this mod*  
+*ⁿᵒ ᵍᵘᵃʳᵃⁿᵗᵉᵉ ᵍˡᵛᵉⁿ ᵃⁿᵈ ᵐᵒᵈ ᶜʳᵉᵃᵗᵒʳ ʷˡˡˡ ˢʸˢᵗᵉᵐᵃᵗˡᶜᵃˡˡʸ ˡᵍⁿᵒʳᵉ ᵃⁿʸ ʳᵉᶜˡᵃᵐᵃᵗˡᵒⁿ*
