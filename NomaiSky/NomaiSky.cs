@@ -170,13 +170,13 @@ public class NomaiSky : ModBehaviour {
 
     // GALACTIC MAP:
     (string, string, float, Color32, Vector3) GetPlaceholder(int x, int y, int z) {
-        Random128.Initialize(galaxyName, x, y, z);
         if(otherModsSystems.ContainsKey((x, y, z))) {
+            Random128.Initialize(galaxyName, x, y, z);
             (string name, float radius, Color32 color, string starName) = otherModsSystems[(x, y, z)];
             return (name, starName, radius, color, new Vector3(Random128.Rng.Range(entryRadius - systemRadius, systemRadius - entryRadius), Random128.Rng.Range(entryRadius - systemRadius, systemRadius - entryRadius), Random128.Rng.Range(entryRadius - systemRadius, systemRadius - entryRadius)));
         } else {
-            StarInitializator(out string starName, out float radius, out byte colorR, out byte colorG, out byte colorB);
-            return ("NomaiSky_" + starName, starName, radius, new Color32(colorR, colorG, colorB, 255), new Vector3(Random128.Rng.Range(entryRadius - systemRadius, systemRadius - entryRadius), Random128.Rng.Range(entryRadius - systemRadius, systemRadius - entryRadius), Random128.Rng.Range(entryRadius - systemRadius, systemRadius - entryRadius)));
+            StarInitializator(x, y, z, out string starName, out float radius, out byte colorR, out byte colorG, out byte colorB);
+            return ("NomaiSky_" + galaxyName + "-" + x + "-" + y + "-" + z, starName, radius, new Color32(colorR, colorG, colorB, 255), new Vector3(Random128.Rng.Range(entryRadius - systemRadius, systemRadius - entryRadius), Random128.Rng.Range(entryRadius - systemRadius, systemRadius - entryRadius), Random128.Rng.Range(entryRadius - systemRadius, systemRadius - entryRadius)));
         }
     }
     void LoadCurrentSystem() {
@@ -229,13 +229,8 @@ public class NomaiSky : ModBehaviour {
         GameObject s = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         Material mat = new(Shader.Find("Standard"));
         mat.EnableKeyword("_EMISSION");
-        //mat.SetColor("_EmissionColor", new Color(3, 3, 0));
-        //mat.SetColor("_Color", Color.black); // Optional
         s.GetComponent<MeshRenderer>().material = mat;
-        s.transform.position = new(100000, 100000, 0);
-        s.transform.localScale = 2000 * Vector3.one;
         OWRigidbody OWRs = s.AddComponent<OWRigidbody>();
-        s.AddComponent<MVBGalacticMap>().Initializator((1, 1, 0), galacticMap[(1, 1, 0)].starName);
         GameObject RFs = new("RFsphere") {
             layer = LayerMask.NameToLayer("ReferenceFrameVolume")
         };
@@ -265,13 +260,12 @@ public class NomaiSky : ModBehaviour {
                             star.name = starName;
                             star.GetComponent<MeshRenderer>().material.SetColor("_EmissionColor", 2 * (Color)color);
                             star.transform.position = 2 * systemRadius * new Vector3(x, y, z) + offset - currentOffset;
-                            star.transform.localScale *= radius / 2000;
-                            star.GetComponent<MVBGalacticMap>().Initializator((currentCenter.x + x, currentCenter.y + y, currentCenter.z + z), starName);
+                            star.transform.localScale = radius * Vector3.one;
+                            star.AddComponent<MVBGalacticMap>().Initializator((currentCenter.x + x, currentCenter.y + y, currentCenter.z + z), starName);
                             MakeProxy(starName, star, radius, color);
                         } else {
                             ModHelper.Console.WriteLine("Galactic key not found: " + (currentCenter.x + x, currentCenter.y + y, currentCenter.z + z).ToString(), MessageType.Error);
                         }
-                        //GameObject gameObject = Instantiate<GameObject>(this._proxies[i].proxyPrefab);
                     }
                 }
             }
@@ -346,8 +340,8 @@ public class NomaiSky : ModBehaviour {
         if(!visited.Contains(newCoords)) {
             DictUpdate(currentCenter.x - x, currentCenter.y - y, currentCenter.z - z);
             if(!otherModsSystems.ContainsKey(newCoords)) {
-                StarInitializator(out string starName, out float radius, out byte colorR, out byte colorG, out byte colorB);
-                string systemPath = Path.Combine(ModHelper.Manifest.ModFolderPath, "systems", "NomaiSky_" + starName + ".json");
+                StarInitializator(currentCenter.x, currentCenter.y, currentCenter.z, out string starName, out float radius, out byte colorR, out byte colorG, out byte colorB);
+                string systemPath = Path.Combine(ModHelper.Manifest.ModFolderPath, "systems", version.Replace('.', '-'), "NomaiSky_" + galaxyName + "-" + currentCenter.x + "-" + currentCenter.y + "-" + currentCenter.z + ".json");
                 waitForWrite = true;
                 if(File.Exists(systemPath)) {
                     string[] split = File.ReadAllText(systemPath).Split(["\"version\":"], StringSplitOptions.None);
@@ -355,6 +349,7 @@ public class NomaiSky : ModBehaviour {
                 }
                 if(waitForWrite) {
                     try {
+                        Directory.CreateDirectory(Path.Combine(ModHelper.Manifest.ModFolderPath, "systems", version.Replace('.', '-')));
                         File.WriteAllText(systemPath, SystemCreator(starName, radius, colorR, colorG, colorB));
                     } catch(ArgumentException e) {
                         ModHelper.Console.WriteLine($"Cannot write system file! {e.Message}", MessageType.Error);
@@ -375,7 +370,7 @@ public class NomaiSky : ModBehaviour {
     }
     void SpawnIntoSystem(string systemName) {
         if(!otherModsSystems.ContainsKey(currentCenter)) {
-            GameObject star = NewHorizons.GetPlanet(systemName.Substring(9));
+            GameObject star = Locator.GetCenterOfTheUniverse().GetStaticReferenceFrame().gameObject;
             if(star != null) {
                 Transform shipSpawnPoint = star.transform.Find("ShipSpawnPoint");
                 if(entryPosition != Vector3.zero) {
@@ -400,23 +395,23 @@ public class NomaiSky : ModBehaviour {
                 Locator.GetShipBody().gameObject.AddComponent<WarpController>();
             }
             GenerateNeighborhood();
-            ModHelper.Console.WriteLine("Loaded into " + NewHorizons.GetCurrentStarSystem() + "! Current galaxy: " + galaxyName, MessageType.Success);
+            ModHelper.Console.WriteLine("Loaded into " + galacticMap[currentCenter].starName + " (" + systemName + ")! Current galaxy: " + galaxyName, MessageType.Success);
         }, 2);
     }
 
     // GENERATION:
-    void StarInitializator(out string starName, out float radius, out byte colorR, out byte colorG, out byte colorB) {
-        Random128.Initialize(galaxyName, currentCenter.x, currentCenter.y, currentCenter.z);
+    void StarInitializator(int x, int y, int z, out string starName, out float radius, out byte colorR, out byte colorG, out byte colorB) {
+        Random128.Initialize(galaxyName, x, y, z);
         starName = StarNameGen();
         radius = GaussianDist(4000, 800);
         colorR = BGaussianDist(150);
         colorG = BGaussianDist(150);
         colorB = BGaussianDist(150);
     }
-    string SystemCreator(string systemName, float radius, byte colorR, byte colorG, byte colorB) {
-        string path = Path.Combine(ModHelper.Manifest.ModFolderPath, "planets", systemName);
-        Directory.CreateDirectory(path + "/" + systemName);
-        File.WriteAllText(Path.Combine(path, systemName, systemName + ".json"), StarCreator(systemName, radius, colorR, colorG, colorB));
+    string SystemCreator(string starName, float radius, byte colorR, byte colorG, byte colorB) {
+        string path = Path.Combine(ModHelper.Manifest.ModFolderPath, "planets", version.Replace('.', '-'), galaxyName + "-" + currentCenter.x + "-" + currentCenter.y + "-" + currentCenter.z);
+        Directory.CreateDirectory(path + "/" + starName);
+        File.WriteAllText(Path.Combine(path, starName, starName + ".json"), StarCreator(starName, radius, colorR, colorG, colorB));
         int nbPlanets = Mathf.CeilToInt(GaussianDist(4, 2, 2));
         int fuelPlanet = Random128.Rng.Range(0, nbPlanets);
         int fuelMoon = -1;
@@ -446,7 +441,7 @@ public class NomaiSky : ModBehaviour {
             }
             string planetName = PlanetNameGen();
             Directory.CreateDirectory(Path.Combine(path, planetName));
-            File.WriteAllText(Path.Combine(path, planetName, planetName + ".json"), PlanetCreator(systemName, planetName, orbits[i] + 8500 * i + 10500, (i == fuelPlanet && fuelMoon < 0)));
+            File.WriteAllText(Path.Combine(path, planetName, planetName + ".json"), PlanetCreator(starName, planetName, orbits[i] + 8500 * i + 10500, (i == fuelPlanet && fuelMoon < 0)));
             if(nbMoons > 0) {
                 int[] moonOrbits = new int[nbMoons];
                 int allowedMoonOrbits = 3000 - (nbMoons * 500);
@@ -457,79 +452,80 @@ public class NomaiSky : ModBehaviour {
                 for(int j = 0;j < nbMoons;j++) {
                     string moonName = PlanetNameGen(true);
                     Directory.CreateDirectory(Path.Combine(path, planetName, moonName.Replace(' ', '_')));
-                    File.WriteAllText(Path.Combine(path, planetName, moonName.Replace(' ', '_'), moonName.Replace(' ', '_') + ".json"), PlanetCreator(systemName, moonName, moonOrbits[j] + 500 * j + 1320, j == fuelMoon, planetName));
+                    File.WriteAllText(Path.Combine(path, planetName, moonName.Replace(' ', '_'), moonName.Replace(' ', '_') + ".json"), PlanetCreator(starName, moonName, moonOrbits[j] + 500 * j + 1320, j == fuelMoon, planetName));
                 }
             }
         }
         return "{\"extras\":{\"mod_config\":{\"version\":" + version + "}},\"$schema\":\"https://raw.githubusercontent.com/Outer-Wilds-New-Horizons/new-horizons/main/NewHorizons/Schemas/star_system_schema.json\",\"respawnHere\":true}";
     }
-    string StarCreator(string solarSystem, float radius, byte colorR, byte colorG, byte colorB) {
-        string relativePath = "planets/" + solarSystem + "/" + solarSystem + "/";
+    string StarCreator(string starName, float radius, byte colorR, byte colorG, byte colorB) {
+        string relativePath = "planets/" + version.Replace('.', '-') + "/" + galaxyName + "-" + currentCenter.x + "-" + currentCenter.y + "-" + currentCenter.z + "/" + starName + "/";
         SpriteGenerator("star", relativePath + "map_star.png", colorR, colorG, colorB);
         string finalJson = $$"""
             {
-                "name": "{{solarSystem}}",
+                "name": "{{starName}}",
                 "$schema": "https://raw.githubusercontent.com/Outer-Wilds-New-Horizons/new-horizons/main/NewHorizons/Schemas/body_schema.json",
-                "starSystem": "NomaiSky_{{solarSystem}}",
+                "starSystem": "NomaiSky_{{galaxyName + "-" + currentCenter.x + "-" + currentCenter.y + "-" + currentCenter.z}}",
                 "canShowOnTitle": false,
                 "Base": {
-                "surfaceSize": {{radius.ToString(CultureInfo.InvariantCulture)}},
-                "surfaceGravity": "{{GaussianDist(radius * 3 / 500).ToString(CultureInfo.InvariantCulture)}}",
-                "gravityFallOff": "inverseSquared",
-                "centerOfSolarSystem": true
-            },
-            "Orbit": {
-                "showOrbitLine": false,
-                "isStatic": true
-            },
-            "Star": {
-                "size": {{radius.ToString(CultureInfo.InvariantCulture)}},
-                "tint": {
-                    "r": {{colorR}},
-                    "g": {{colorG}},
-                    "b": {{colorB}},
-                    "a": 255
+                    "surfaceSize": {{radius.ToString(CultureInfo.InvariantCulture)}},
+                    "surfaceGravity": {{GaussianDist(radius * 3 / 500).ToString(CultureInfo.InvariantCulture)}},
+                    "gravityFallOff": "inverseSquared",
+                    "centerOfSolarSystem": true
                 },
-                "lightTint": {
-                    "r": {{(colorR + 510) / 3}},
-                    "g": {{(colorG + 510) / 3}},
-                    "b": {{(colorB + 510) / 3}},
-                    "a": 255
+                "Orbit": {
+                    "showOrbitLine": false,
+                    "isStatic": true
                 },
-                "solarLuminosity": {{Random128.Rng.Range(0.3f, 2f).ToString(CultureInfo.InvariantCulture)}},
-                "stellarDeathType": "none"
-            },
-            "Spawn": {
-                "shipSpawnPoints": [
-                    {
-                        "isDefault": true,
-                        "position": {"x": 0, "y": 10000, "z": -34100},
-                        "rotation": {"x": 16.334, "y": 0, "z": 0}
+                "Star": {
+                    "size": {{radius.ToString(CultureInfo.InvariantCulture)}},
+                    "tint": {
+                        "r": {{colorR}},
+                        "g": {{colorG}},
+                        "b": {{colorB}},
+                        "a": 255
+                    },
+                    "lightTint": {
+                        "r": {{(colorR + 510) / 3}},
+                        "g": {{(colorG + 510) / 3}},
+                        "b": {{(colorB + 510) / 3}},
+                        "a": 255
+                    },
+                    "solarLuminosity": {{Random128.Rng.Range(0.3f, 2f).ToString(CultureInfo.InvariantCulture)}},
+                    "stellarDeathType": "none"
+                },
+                "Spawn": {
+                    "shipSpawnPoints": [
+                        {
+                            "isDefault": true,
+                            "position": {"x": 0, "y": 10000, "z": -34100},
+                            "rotation": {"x": 16.334, "y": 0, "z": 0}
+                        }
+                    ]
+                },
+                "ShipLog": {
+                    "mapMode": {
+                        "revealedSprite": "{{relativePath}}map_star.png",
+                        "scale": {{(radius / 500f).ToString(CultureInfo.InvariantCulture)}},
+                        "selectable": false
                     }
-                ]
-            },
-            "ShipLog": {
-                "mapMode": {
-                    "revealedSprite": "{{relativePath}}map_star.png",
-                    "scale": {{(radius / 500f).ToString(CultureInfo.InvariantCulture)}},
-                    "selectable": false
                 }
             }
             """;
         return finalJson;
     }
-    string PlanetCreator(string solarSystem, string planetName, int orbit, bool fuel, string orbiting = "") {
-        string relativePath = "planets/" + solarSystem + "/" + (orbiting != "" ? orbiting + "/" : "") + planetName.Replace(' ', '_') + "/";
+    string PlanetCreator(string starName, string planetName, int orbit, bool fuel, string orbiting = "") {
+        string relativePath = "planets/" + version.Replace('.', '-') + "/" + galaxyName + "-" + currentCenter.x + "-" + currentCenter.y + "-" + currentCenter.z + "/" + (orbiting != "" ? orbiting + "/" : "") + planetName.Replace(' ', '_') + "/";
         string characteristics = "A ";
         List<char> vowels = ['a', 'e', 'i', 'o', 'u'];
         string finalJson = "{\n\"name\": \"" + planetName + "\",\n" +
             "\"$schema\": \"https://raw.githubusercontent.com/Outer-Wilds-New-Horizons/new-horizons/main/NewHorizons/Schemas/body_schema.json\",\n";
-        if(solarSystem == "SolarSystem") {
+        /*if(starName == "SolarSystem") {
             finalJson += "\"starSystem\": \"SolarSystem\",\n";
-            solarSystem = "Sun";
-        } else {
-            finalJson += "\"starSystem\": \"NomaiSky_" + solarSystem + "\",\n";
-        }
+            starName = "Sun";
+        } else {*/
+        finalJson += "\"starSystem\": \"NomaiSky_" + galaxyName + "-" + currentCenter.x + "-" + currentCenter.y + "-" + currentCenter.z + "\",\n";
+        //}
         finalJson += "\"canShowOnTitle\": false,\n" +
             "\"Base\": {\n";
         float radius = (orbiting == "") ? GaussianDist(500, 150) : GaussianDist(100, 30);
@@ -596,7 +592,7 @@ public class NomaiSky : ModBehaviour {
                 "    \"primaryBody\": \"" + orbiting + "\",\n";
             characteristics += "moon";
         } else {
-            finalJson += "    \"primaryBody\": \"" + solarSystem + "\",\n";
+            finalJson += "    \"primaryBody\": \"" + starName + "\",\n";
             characteristics += "planet";
         }
         finalJson += "    \"semiMajorAxis\": " + orbit + ",\n" +
@@ -718,11 +714,11 @@ public class NomaiSky : ModBehaviour {
             "\"Volumes\": {\n" +
             "    \"revealVolumes\": [\n" +
             "        {\"radius\": " + (1.2f * (ringRadius > 0 ? ringRadius : radius)).ToString(CultureInfo.InvariantCulture) + ",\n" +
-            "        \"reveals\": [\"VAMBOK.NOMAISKY_" + solarSystem.ToUpper() + "_" + planetName.Replace(' ', '_').ToUpper() + "\"]}\n" +
+            "        \"reveals\": [\"VAMBOK.NOMAISKY_" + version + "_" + galaxyName + " - " + currentCenter.x + " - " + currentCenter.y + " - " + currentCenter.z + "_" + planetName.Replace(' ', '_').ToUpper() + "\"]}\n" +
             "    ]\n" +
             "},\n" +
             "\"MapMarker\": {\"enabled\": true}\n}";
-        AssetsMaker(relativePath, solarSystem, planetName, characteristics);
+        AssetsMaker(relativePath, planetName, characteristics);
         return finalJson;
     }
     void SpriteGenerator(string mode, string path) { SpriteGenerator(mode, path, 0, 0, 0); }
@@ -827,7 +823,7 @@ public class NomaiSky : ModBehaviour {
             break;
         case "fact":
             string[] pathChunks = path.Split('/', '\\');
-            File.Copy(path + "map_planet.png", path + "sprites/ENTRY_" + pathChunks[pathChunks.Length - 2].ToUpper() + ".png");
+            File.Copy(path + "map_planet.png", path + "sprites/ENTRY_" + galaxyName + "-" + currentCenter.x + "-" + currentCenter.y + "-" + currentCenter.z + "_" + pathChunks[pathChunks.Length - 2].ToUpper() + ".png", true);
             return;
         default:
             return;
@@ -838,12 +834,12 @@ public class NomaiSky : ModBehaviour {
         File.WriteAllBytes(path, ImageConversion.EncodeToPNG(tex));
         Destroy(tex);
     }
-    void AssetsMaker(string relativePath, string starName, string planetName, string characteristics = "A very mysterious planet.") {
+    void AssetsMaker(string relativePath, string planetName, string characteristics = "A very mysterious planet.") {
         string path = Path.Combine(ModHelper.Manifest.ModFolderPath, relativePath);
         Directory.CreateDirectory(path + "/sprites");
         File.WriteAllText(path + "/shiplogs.xml", "<AstroObjectEntry xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:noNamespaceSchemaLocation=\"https://raw.githubusercontent.com/Outer-Wilds-New-Horizons/new-horizons/main/NewHorizons/Schemas/shiplog_schema.xsd\">\n" +
-            "<ID>" + planetName.Replace(' ', '_').ToUpper() + "</ID>\n<Entry>\n<ID>ENTRY_" + planetName.Replace(' ', '_').ToUpper() + "</ID>\n<Name>" + planetName + "</Name>\n" +
-            "<ExploreFact>\n<ID>VAMBOK.NOMAISKY_" + starName.ToUpper() + "_" + planetName.Replace(' ', '_').ToUpper() + "</ID>\n" +
+            "<ID>" + planetName.Replace(' ', '_').ToUpper() + "</ID>\n<Entry>\n<ID>ENTRY_" + galaxyName + "-" + currentCenter.x + "-" + currentCenter.y + "-" + currentCenter.z + "_" + planetName.Replace(' ', '_').ToUpper() + "</ID>\n<Name>" + planetName + "</Name>\n" +
+            "<ExploreFact>\n<ID>VAMBOK.NOMAISKY_" + version + "_" + galaxyName + "-" + currentCenter.x + "-" + currentCenter.y + "-" + currentCenter.z + "_" + planetName.Replace(' ', '_').ToUpper() + "</ID>\n" +
             "<Text>" + characteristics + "</Text>\n" +
             "</ExploreFact>\n</Entry>\n</AstroObjectEntry>");
         SpriteGenerator("fact", relativePath);
@@ -1075,10 +1071,13 @@ public class NomaiSky : ModBehaviour {
 //  add mysterious artefacts (one / 10 systems) that increase warpPower towards 1
 //  fix space travel
 //  warp loading black (not freeze)
+//  add map indicator for visited systems
 //MAYBE?:
 //  add heightmaps mipmap1
 //  correct textures, big planets gets higher res?
 //TO TEST:
+//  change paths to "version/"
+//  change system names to its coords
 //DONE:
 //  bigger referenceframevolume (entryradius)
 //  galactic key not found
