@@ -33,7 +33,7 @@ public class NomaiSky : ModBehaviour {
     Quaternion entryRotation;
     // GENERATION:
     readonly int galaxyName = 0;
-    const string version = "0.2.1";//Changing this will cause a rebuild of all previously visited systems, increment only when changing the procedural generation!
+    const string version = "0.2.4";//Changing this will cause a rebuild of all previously visited systems, increment only when changing the procedural generation!
 
     // START:
     public void Awake() {
@@ -341,15 +341,14 @@ public class NomaiSky : ModBehaviour {
             DictUpdate(currentCenter.x - x, currentCenter.y - y, currentCenter.z - z);
             if(!otherModsSystems.ContainsKey(newCoords)) {
                 StarInitializator(currentCenter.x, currentCenter.y, currentCenter.z, out string starName, out float radius, out byte colorR, out byte colorG, out byte colorB);
-                string systemPath = Path.Combine(ModHelper.Manifest.ModFolderPath, "systems", version.Replace('.', '-'), "NomaiSky_" + galaxyName + "-" + currentCenter.x + "-" + currentCenter.y + "-" + currentCenter.z + ".json");
+                string systemPath = Path.Combine(ModHelper.Manifest.ModFolderPath, "systems", "NomaiSky_" + galaxyName + "-" + currentCenter.x + "-" + currentCenter.y + "-" + currentCenter.z + ".json");
                 waitForWrite = true;
                 if(File.Exists(systemPath)) {
-                    string[] split = File.ReadAllText(systemPath).Split(["\"version\":"], StringSplitOptions.None);
-                    if(split.Length > 1 && split[1].Split('}')[0] == version) waitForWrite = false;
+                    string[] split = File.ReadAllText(systemPath).Split(["\"version\":\""], 2, StringSplitOptions.None);
+                    if(split.Length > 1 && split[1].Split(['"'], 2)[0] == version) waitForWrite = false;
                 }
                 if(waitForWrite) {
                     try {
-                        Directory.CreateDirectory(Path.Combine(ModHelper.Manifest.ModFolderPath, "systems", version.Replace('.', '-')));
                         File.WriteAllText(systemPath, SystemCreator(starName, radius, colorR, colorG, colorB));
                     } catch(ArgumentException e) {
                         ModHelper.Console.WriteLine($"Cannot write system file! {e.Message}", MessageType.Error);
@@ -370,7 +369,7 @@ public class NomaiSky : ModBehaviour {
     }
     void SpawnIntoSystem(string systemName) {
         if(!otherModsSystems.ContainsKey(currentCenter)) {
-            GameObject star = Locator.GetCenterOfTheUniverse().GetStaticReferenceFrame().gameObject;
+            GameObject star = NewHorizons.GetPlanet(galacticMap[currentCenter].starName);
             if(star != null) {
                 Transform shipSpawnPoint = star.transform.Find("ShipSpawnPoint");
                 if(entryPosition != Vector3.zero) {
@@ -409,7 +408,7 @@ public class NomaiSky : ModBehaviour {
         colorB = BGaussianDist(150);
     }
     string SystemCreator(string starName, float radius, byte colorR, byte colorG, byte colorB) {
-        string path = Path.Combine(ModHelper.Manifest.ModFolderPath, "planets", version.Replace('.', '-'), galaxyName + "-" + currentCenter.x + "-" + currentCenter.y + "-" + currentCenter.z);
+        string path = Path.Combine(ModHelper.Manifest.ModFolderPath, "planets", galaxyName + "-" + currentCenter.x + "-" + currentCenter.y + "-" + currentCenter.z);
         Directory.CreateDirectory(path + "/" + starName);
         File.WriteAllText(Path.Combine(path, starName, starName + ".json"), StarCreator(starName, radius, colorR, colorG, colorB));
         int nbPlanets = Mathf.CeilToInt(GaussianDist(4, 2, 2));
@@ -456,10 +455,10 @@ public class NomaiSky : ModBehaviour {
                 }
             }
         }
-        return "{\"extras\":{\"mod_config\":{\"version\":" + version + "}},\"$schema\":\"https://raw.githubusercontent.com/Outer-Wilds-New-Horizons/new-horizons/main/NewHorizons/Schemas/star_system_schema.json\",\"respawnHere\":true}";
+        return "{\"extras\":{\"mod_config\":{\"version\":\"" + version + "\"}},\"$schema\":\"https://raw.githubusercontent.com/Outer-Wilds-New-Horizons/new-horizons/main/NewHorizons/Schemas/star_system_schema.json\",\"respawnHere\":true}";
     }
     string StarCreator(string starName, float radius, byte colorR, byte colorG, byte colorB) {
-        string relativePath = "planets/" + version.Replace('.', '-') + "/" + galaxyName + "-" + currentCenter.x + "-" + currentCenter.y + "-" + currentCenter.z + "/" + starName + "/";
+        string relativePath = "planets/" + galaxyName + "-" + currentCenter.x + "-" + currentCenter.y + "-" + currentCenter.z + "/" + starName + "/";
         SpriteGenerator("star", relativePath + "map_star.png", colorR, colorG, colorB);
         string finalJson = $$"""
             {
@@ -515,7 +514,7 @@ public class NomaiSky : ModBehaviour {
         return finalJson;
     }
     string PlanetCreator(string starName, string planetName, int orbit, bool fuel, string orbiting = "") {
-        string relativePath = "planets/" + version.Replace('.', '-') + "/" + galaxyName + "-" + currentCenter.x + "-" + currentCenter.y + "-" + currentCenter.z + "/" + (orbiting != "" ? orbiting + "/" : "") + planetName.Replace(' ', '_') + "/";
+        string relativePath = "planets/" + galaxyName + "-" + currentCenter.x + "-" + currentCenter.y + "-" + currentCenter.z + "/" + (orbiting != "" ? orbiting + "/" : "") + planetName.Replace(' ', '_') + "/";
         string characteristics = "A ";
         List<char> vowels = ['a', 'e', 'i', 'o', 'u'];
         string finalJson = "{\n\"name\": \"" + planetName + "\",\n" +
@@ -680,7 +679,7 @@ public class NomaiSky : ModBehaviour {
             finalJson += "\"Props\": {\n" +
                 "    \"scatter\": [\n";
             if(fuel) {
-                finalJson += "{\"path\": \"" + (hasDLC ? "RingWorld_Body/Sector_RingInterior/Sector_Zone2/Structures_Zone2/EyeTempleRuins_Zone2/Interactables_EyeTempleRuins_Zone2/Prefab_IP_FuelTorch (1)\"" : "CaveTwin_Body/Sector_CaveTwin/Sector_NorthHemisphere/Sector_NorthSurface/Sector_Lakebed/Interactables_Lakebed/Prefab_HEA_FuelTank\", \"rotation\": {\"x\": 30, \"y\": 0, \"z\": 270}") + ", \"count\": 1}" + (hasWaterOxygenTrees ? "," : "") + "\n";
+                finalJson += "        {\"path\": \"" + (hasDLC ? "RingWorld_Body/Sector_RingInterior/Sector_Zone2/Structures_Zone2/EyeTempleRuins_Zone2/Interactables_EyeTempleRuins_Zone2/Prefab_IP_FuelTorch (1)\"" : "CaveTwin_Body/Sector_CaveTwin/Sector_NorthHemisphere/Sector_NorthSurface/Sector_Lakebed/Interactables_Lakebed/Prefab_HEA_FuelTank\", \"rotation\": {\"x\": 30, \"y\": 0, \"z\": 270}") + ", \"count\": 1}" + (hasWaterOxygenTrees ? "," : "") + "\n";
             }
             if(hasWaterOxygenTrees) {
                 finalJson += "        {\"path\": \"" + (hasDLC ? "DreamWorld_Body/Sector_DreamWorld/Sector_Underground/IslandsRoot/IslandPivot_B/Island_B/Props_Island_B/Tree_DW_L (3)" : "QuantumMoon_Body/Sector_QuantumMoon/State_TH/Interactables_THState/Crater_1/Crater_1_QRedwood/QRedwood (2)/Prefab_TH_Redwood") + "\", \"count\": " + IGaussianDist(radius * radius / 1250) + ", \"scale\": " + GaussianDist(1, 0.2f).ToString(CultureInfo.InvariantCulture) + "},\n" +
@@ -714,7 +713,7 @@ public class NomaiSky : ModBehaviour {
             "\"Volumes\": {\n" +
             "    \"revealVolumes\": [\n" +
             "        {\"radius\": " + (1.2f * (ringRadius > 0 ? ringRadius : radius)).ToString(CultureInfo.InvariantCulture) + ",\n" +
-            "        \"reveals\": [\"VAMBOK.NOMAISKY_" + version + "_" + galaxyName + " - " + currentCenter.x + " - " + currentCenter.y + " - " + currentCenter.z + "_" + planetName.Replace(' ', '_').ToUpper() + "\"]}\n" +
+            "        \"reveals\": [\"VAMBOK.NOMAISKY_" + version + "_" + galaxyName + "-" + currentCenter.x + "-" + currentCenter.y + "-" + currentCenter.z + "_" + planetName.Replace(' ', '_').ToUpper() + "\"]}\n" +
             "    ]\n" +
             "},\n" +
             "\"MapMarker\": {\"enabled\": true}\n}";
@@ -838,7 +837,7 @@ public class NomaiSky : ModBehaviour {
         string path = Path.Combine(ModHelper.Manifest.ModFolderPath, relativePath);
         Directory.CreateDirectory(path + "/sprites");
         File.WriteAllText(path + "/shiplogs.xml", "<AstroObjectEntry xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:noNamespaceSchemaLocation=\"https://raw.githubusercontent.com/Outer-Wilds-New-Horizons/new-horizons/main/NewHorizons/Schemas/shiplog_schema.xsd\">\n" +
-            "<ID>" + planetName.Replace(' ', '_').ToUpper() + "</ID>\n<Entry>\n<ID>ENTRY_" + galaxyName + "-" + currentCenter.x + "-" + currentCenter.y + "-" + currentCenter.z + "_" + planetName.Replace(' ', '_').ToUpper() + "</ID>\n<Name>" + planetName + "</Name>\n" +
+            "<ID>" + version + "_" + galaxyName + "-" + currentCenter.x + "-" + currentCenter.y + "-" + currentCenter.z + "_" + planetName.Replace(' ', '_').ToUpper() + "</ID>\n<Entry>\n<ID>ENTRY_" + version + "_" + galaxyName + "-" + currentCenter.x + "-" + currentCenter.y + "-" + currentCenter.z + "_" + planetName.Replace(' ', '_').ToUpper() + "</ID>\n<Name>" + planetName + "</Name>\n" +
             "<ExploreFact>\n<ID>VAMBOK.NOMAISKY_" + version + "_" + galaxyName + "-" + currentCenter.x + "-" + currentCenter.y + "-" + currentCenter.z + "_" + planetName.Replace(' ', '_').ToUpper() + "</ID>\n" +
             "<Text>" + characteristics + "</Text>\n" +
             "</ExploreFact>\n</Entry>\n</AstroObjectEntry>");
