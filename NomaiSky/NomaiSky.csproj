@@ -13,6 +13,9 @@
   <ItemGroup>
     <PackageReference Include="OWML" Version="2.15.1" />
     <PackageReference Include="OuterWildsGameLibs" Version="1.1.15.1018" />
+	  <Reference Include="NewHorizons.dll">
+		  <Private>False</Private>
+	  </Reference>
   </ItemGroup>
   <ItemGroup>
     <None Include="default-config.json">
@@ -26,6 +29,9 @@
     <Content Include="NomaiSky.csproj.user" />
   </ItemGroup>
   <ItemGroup>
+	  <None Include="assets\**\*.*">
+		  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </None>
     <None Include="planets\**\*.*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

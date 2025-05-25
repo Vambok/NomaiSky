@@ -1,0 +1,5 @@
+<Project>
+  <PropertyGroup>
+    <OutputPath>$(AppData)\OuterWildsModManager\OWML\Mods\Vambok.NomaiSky</OutputPath>
+  </PropertyGroup>
+</Project>
