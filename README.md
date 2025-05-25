@@ -10,9 +10,16 @@ A procedurally generated universe of near infinite possibilities!
 - Nothing to interact with yet *ᵒʳ ˡˢ ᵗʰᵉʳᵉ*
 - No added Bramble, and anglerfish free*
 - If you have other mods installed you may be able to find them among the stars...
-
-(Ps: don't worry, no star will blow up)  
+- You can take your time, no star will blow up *(we fixed the thing)*  
   
   
 \**only in star systems originating from this mod*  
-*ⁿᵒ ᵍᵘᵃʳᵃⁿᵗᵉᵉ ᵍˡᵛᵉⁿ ᵃⁿᵈ ᵐᵒᵈ ᶜʳᵉᵃᵗᵒʳ ʷˡˡˡ ˢʸˢᵗᵉᵐᵃᵗˡᶜᵃˡˡʸ ˡᵍⁿᵒʳᵉ ᵃⁿʸ ʳᵉᶜˡᵃᵐᵃᵗˡᵒⁿ*
+*ⁿᵒ ᵍᵘᵃʳᵃⁿᵗᵉᵉ ᵍˡᵛᵉⁿ ᵃⁿᵈ ᵐᵒᵈ ᶜʳᵉᵃᵗᵒʳ ʷˡˡˡ ˢʸˢᵗᵉᵐᵃᵗˡᶜᵃˡˡʸ ˡᵍⁿᵒʳᵉ ᵃⁿʸ ʳᵉᶜˡᵃᵐᵃᵗˡᵒⁿ*  
+
+
+  
+### Credits
+
+- Vambok: Programming
+- Trifid: Code tidiness
+- Lezzlebit: Artworks
