@@ -4,7 +4,7 @@
   "author": "Vambok",
   "name": "NomaiSky",
   "uniqueName": "Vambok.NomaiSky",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "owmlVersion": "2.15.1",
   "dependencies": ["xen.NewHorizons"]
 }
