@@ -1,4 +1,16 @@
 {
-  "$schema": "https://raw.githubusercontent.com/ow-mods/owml/master/schemas/config_schema.json",
-  "enabled": true
+    "$schema": "https://raw.githubusercontent.com/ow-mods/owml/master/schemas/config_schema.json",
+    "enabled": true,
+    "settings": {
+        "Star system to start the game in": {
+            "type": "selector",
+            "value": "Last visited system",
+            "options": [
+                "Last visited system",
+                "The Outer Wilds",
+                "Random system",
+                "Distant system"
+            ]
+        }
+    }
 }
