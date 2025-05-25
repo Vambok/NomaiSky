@@ -151,21 +151,20 @@ public class NomaiSky : ModBehaviour {
         NewHorizons.GetStarSystemLoadedEvent().AddListener(SpawnIntoSystem);
         // Example of accessing game code.
         //OnCompleteSceneLoad(OWScene.TitleScreen, OWScene.TitleScreen); // We start on title screen
+        LoadManager.OnStartSceneLoad += OnStartSceneLoad;
         LoadManager.OnCompleteSceneLoad += OnCompleteSceneLoad;
+    }
+    public void OnStartSceneLoad(OWScene originalScene, OWScene loadScene) {
+        if(loadScene == OWScene.SolarSystem) {
+            ModHelper.Console.WriteLine("Start OW scene load!", MessageType.Success);//TEST
+            LoadCurrentSystem();
+        }
     }
     public void OnCompleteSceneLoad(OWScene previousScene, OWScene newScene) {
         ModHelper.Console.WriteLine("Scene loaded!", MessageType.Success);//TEST
-        if(newScene == OWScene.TitleScreen) LoadCurrentSystem();
         /*string toto = Heightmaps.CreateHeightmap(Path.Combine(ModHelper.Manifest.ModFolderPath, "planets/heightmap")); //TEST
         ModHelper.Console.WriteLine("HM done! "+toto, MessageType.Success); //TEST*/
     }
-    /*public override void Configure(IModConfig config) {//TEST don't work? (break everything?)
-        if(LoadManager.GetCurrentScene() == OWScene.TitleScreen){
-            string newFavorite = config.GetSettingsValue<string>("Star system to start the game in");
-            ModHelper.Console.WriteLine($"You changed your favorite food to: {newFavorite}!");//TEST
-            LoadCurrentSystem(true);
-        }
-    }*/
     void Update() {
         if(Locator.GetCenterOfTheUniverse() != null) {
             // WARPING:
@@ -197,14 +196,11 @@ public class NomaiSky : ModBehaviour {
             }
         }
         NewHorizons.CreatePlanet("{\"name\": \"Bel-O-Kan of " + galacticMap[currentCenter].starName + "\",\"$schema\": \"https://raw.githubusercontent.com/Outer-Wilds-New-Horizons/new-horizons/main/NewHorizons/Schemas/body_schema.json\",\"starSystem\": \"" + galacticMap[currentCenter].name + "\",\"Base\": {\"groundSize\": 50, \"surfaceSize\": 50, \"surfaceGravity\": 0},\"Orbit\": {\"showOrbitLine\": false,\"semiMajorAxis\": " + ((1 + 2.83f * mapRadius * warpPower) * systemRadius).ToString(CultureInfo.InvariantCulture) + ",\"primaryBody\": \"" + galacticMap[currentCenter].starName + "\"},\"ShipLog\": {\"mapMode\": {\"remove\": true}}}", Instance);
-        LoadCurrentSystem();
     }
-    void LoadCurrentSystem(bool settingChanged = false) {
+    void LoadCurrentSystem() {
         ModHelper.Console.WriteLine("Load system!", MessageType.Success);//TEST
-        (int, int, int) previousSystem = (settingChanged ? currentCenter : (0, 0, 0));
-        (int, int, int) newSystem = previousSystem;
-        string startOption = ModHelper.Config.GetSettingsValue<string>("Star system to start the game in");
-        switch(startOption) {
+        (int, int, int) newSystem = (0, 0, 0);
+        switch(ModHelper.Config.GetSettingsValue<string>("Star system to start the game in")) {
         case "Last visited system":
             ShipLogFactSave getCurrentCenter = PlayerData.GetShipLogFactSave("NomaiSky_currentCenter");
             if(getCurrentCenter != null) {
@@ -219,11 +215,10 @@ public class NomaiSky : ModBehaviour {
             newSystem = (UnityEngine.Random.Range(4 * mapRadius + 1, 40 * mapRadius + 1) * (int)Mathf.Sign(UnityEngine.Random.Range(-1, 1)), UnityEngine.Random.Range(2 * mapRadius + 1, 20 * mapRadius + 1) * (int)Mathf.Sign(UnityEngine.Random.Range(-1, 1)), UnityEngine.Random.Range(4 * mapRadius + 1, 40 * mapRadius + 1) * (int)Mathf.Sign(UnityEngine.Random.Range(-1, 1)));
             break;
         default:
-            newSystem = (0, 0, 0);
             PlayerData._currentGameSave.shipLogFactSaves["NomaiSky_currentCenter"] = new ShipLogFactSave("(0,0,0)");
             break;
         }
-        if(newSystem != previousSystem) {
+        if(newSystem != (0, 0, 0)) {
             ModHelper.Console.WriteLine("Warp!", MessageType.Success);//TEST
             WarpToSystem(newSystem);
         }
@@ -1109,8 +1104,6 @@ public class NomaiSky : ModBehaviour {
 //  add heightmaps mipmap1
 //  correct textures, big planets gets higher res?
 //TO TEST:
-//  change paths to "version/"
-//  change system names to its coords
 //DONE:
 //  bigger referenceframevolume (entryradius)
 //  galactic key not found
@@ -1130,3 +1123,6 @@ public class NomaiSky : ModBehaviour {
 //  talk about atmosphere only if big enough
 //  add water level sometimes
 //  add compat mods
+//  change paths to "version/"
+//  change system names to its coords
+//  add respawn in system config
