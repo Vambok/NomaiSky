@@ -6,5 +6,6 @@
   "uniqueName": "Vambok.NomaiSky",
   "version": "0.3.0",
   "owmlVersion": "2.15.1",
-  "dependencies": ["xen.NewHorizons"]
+  "dependencies": ["xen.NewHorizons"],
+  "pathsToPreserve": ["planets", "systems"]
 }
