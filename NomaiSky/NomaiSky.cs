@@ -33,7 +33,7 @@ public class NomaiSky : ModBehaviour {
     Quaternion entryRotation;
     // GENERATION:
     readonly int galaxyName = 0;
-    const string version = "0.3.0";//Changing this will cause a rebuild of all previously visited systems, increment only when changing the procedural generation!
+    const string version = "0.3.1";//Changing this will cause a rebuild of all previously visited systems, increment only when changing the procedural generation!
 
     // START:
     public void Awake() {
@@ -722,7 +722,7 @@ public class NomaiSky : ModBehaviour {
             "    \"spriteFolder\": \"" + relativePath + "sprites\",\n" +
             "    \"xmlFile\": \"" + relativePath + "shiplogs.xml\",\n" +
             "    \"mapMode\": {\n" +
-            "        \"outlineSprite\": \"planets/outline.png\",\n" +
+            "        \"outlineSprite\": \"outline.png\",\n" +
             "        \"revealedSprite\": \"" + relativePath + "map_atmosphere.png\",\n" +
             "        \"scale\": " + (atmosphereSize / 500f).ToString(CultureInfo.InvariantCulture) + ",\n" +
             "        \"offset\": " + (atmosphereSize / 500f).ToString(CultureInfo.InvariantCulture) + ",\n" +
