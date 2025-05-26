@@ -24,4 +24,4 @@ A procedurally generated universe of near infinite possibilities!
 - Trifid: Code tidiness
 - Lezzlebit: Artworks
 
-https://github.com/user-attachments/assets/8acc5638-0339-433b-9b1c-4d85a1352a4e
+![Nomai's Sky small banner](https://github.com/user-attachments/assets/8acc5638-0339-433b-9b1c-4d85a1352a4e#mini)
