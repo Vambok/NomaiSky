@@ -15,13 +15,12 @@ A procedurally generated universe of near infinite possibilities!
   
 \**only in star systems originating from this mod*  
 *ⁿᵒ ᵍᵘᵃʳᵃⁿᵗᵉᵉ ᵍˡᵛᵉⁿ ᵃⁿᵈ ᵐᵒᵈ ᶜʳᵉᵃᵗᵒʳ ʷˡˡˡ ˢʸˢᵗᵉᵐᵃᵗˡᶜᵃˡˡʸ ˡᵍⁿᵒʳᵉ ᵃⁿʸ ʳᵉᶜˡᵃᵐᵃᵗˡᵒⁿ*  
-
-
+#  
+  
+![Nomai's Sky small banner](https://github.com/user-attachments/assets/199e06ff-891e-48b3-86a7-3c3ad3c7a48d)  
   
 ### Credits
 
 - Vambok: Programming
 - Trifid: Code tidiness
 - Lezzlebit: Artworks
-
-![Nomai's Sky small banner](https://github.com/user-attachments/assets/8acc5638-0339-433b-9b1c-4d85a1352a4e#mini)
