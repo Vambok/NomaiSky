@@ -1,11 +1,11 @@
-﻿using HarmonyLib;
-using OWML.Common;
-using OWML.ModHelper;
-using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.IO;
-using UnityEngine;
+﻿using HarmonyLib;//
+using OWML.Common;//
+using OWML.ModHelper;//
+using System;//?
+using System.Collections.Generic;//
+using System.Globalization;//?
+using System.IO;//
+using UnityEngine;//
 //using System.Diagnostics;
 
 namespace NomaiSky;
@@ -268,6 +268,7 @@ public class NomaiSky : ModBehaviour {
         RFs.transform.localPosition = Vector3.zero;
         ReferenceFrameVolume RFVs = RFs.AddComponent<ReferenceFrameVolume>();
         RFVs._isPrimaryVolume = true;
+        OWRs.GetReferenceFrame()._autopilotArrivalDistance = 1;
         RFVs._referenceFrame = OWRs.GetReferenceFrame();
         RFs.SetActive(true);
 
@@ -934,21 +935,26 @@ public class NomaiSky : ModBehaviour {
     }
 
     // UTILS:
-    byte BGaussianDist(float mean, float sigma = 0, float limit = 3) {
-        return (byte)Mathf.Clamp(IGaussianDist(mean, sigma, limit), 0, 255);
+    byte BGaussianDist(float mean, float sigma = 0, float limit = 3, string seed = "", bool start = false) {
+        return (byte)Mathf.Clamp(IGaussianDist(mean, sigma, limit, seed, start), 0, 255);
     }
-    int IGaussianDist(float mean, float sigma = 0, float limit = 3) {
-        return Mathf.RoundToInt(GaussianDist(mean, sigma, limit));
+    int IGaussianDist(float mean, float sigma = 0, float limit = 3, string seed = "", bool start = false) {
+        return Mathf.RoundToInt(GaussianDist(mean, sigma, limit, seed, start));
     }
-    float GaussianDist(float mean, float sigma = 0, float limit = 3) {
-        if(sigma <= 0) {
-            sigma = mean / 3;
+    float GaussianDist(float mean, float sigma = 0, float limit = 3, string seed = "", bool start = false) {
+        if(sigma <= 0) sigma = mean / 3;
+        Func<float> random;
+        if(seed == "") random = () => Random128.Rng.Range(-1f, 1f);
+        else {
+            if(start) Random128.Rng.Restart();
+            random = () => Random128.Rng.Range(-1f, 1f, seed);
         }
+
         float x1, x2;
         do {
             do {
-                x1 = Random128.Rng.Range(-1f, 1f);
-                x2 = Random128.Rng.Range(-1f, 1f);
+                x1 = random();
+                x2 = random();
                 x2 = x1 * x1 + x2 * x2;
             } while(x2 >= 1.0 || x2 == 0);
             x2 = mean + x1 * Mathf.Sqrt(-2 * Mathf.Log(x2) / x2) * sigma;
@@ -1084,16 +1090,13 @@ public class NomaiSky : ModBehaviour {
         string modifiedName = GetColorName(color);
         if(StylizedColorNames.TryGetValue(modifiedName, out string[] variants) && variants.Length > 0) {
             int result = Random128.Rng.Range(-1, variants.Length);
-            if(result >= 0) {
-                return variants[result];
-            }
+            if(result >= 0) return variants[result];
         }
         return modifiedName;
     }
 }
 
 
-//(NEED for V1):
 //TODO:
 //  add mysterious artefacts (one / 10 systems) that increase warpPower towards 1
 //  fix space travel
@@ -1104,6 +1107,7 @@ public class NomaiSky : ModBehaviour {
 //  add heightmaps mipmap1
 //  correct textures, big planets gets higher res?
 //TO TEST:
+//  reforged Random to allow parametric sampling
 //DONE:
 //  bigger referenceframevolume (entryradius)
 //  galactic key not found
@@ -1126,3 +1130,4 @@ public class NomaiSky : ModBehaviour {
 //  change paths to "version/"
 //  change system names to its coords
 //  add respawn in system config
+//  allow autopilot on stars
