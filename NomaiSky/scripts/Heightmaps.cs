@@ -1,6 +1,6 @@
-using System;
-using System.IO;
-using UnityEngine;
+using System;//
+using System.IO;//
+using UnityEngine;//
 
 static class Heightmaps
 {
@@ -22,7 +22,7 @@ static class Heightmaps
         return ((int)sampleX, (int)(hmHeight * latitude / 180f), HeightGenerator(v.normalized * radius));
     }
 
-    public static void CreateHeightmap(string path, float planetRadius, Color32 color, string seed = "")
+    public static void CreateHeightmap(string path, float planetRadius, Color32 color, string parameter = "")
     {
         radius = planetRadius / 10;//tweak this till frequences are great
         int hmWidth = baseRes * 2;
@@ -34,7 +34,8 @@ static class Heightmaps
 
         //timer.Reset(); //TEST
         //Random128.Initialize(1, 5463, 64875, 215);for(int jj = 0;jj < 10;jj++) { //TEST
-        perm = NomaiSky.Random128.Rng.GeneratePermutations(seed);
+        if(parameter != "") NomaiSky.Random128.Rng.Start(parameter);
+        perm = NomaiSky.Random128.Rng.GeneratePermutations();
 
         for (int x = 0; x <= resolution; x++)
         {
