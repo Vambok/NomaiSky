@@ -11,6 +11,16 @@
                 "Random system",
                 "Distant system"
             ]
+        },
+        "Visited systems display type": {
+            "type": "selector",
+            "value": "Lines",
+            "options": [
+                "Lines",
+                "All lines",
+                "Rings",
+                "None"
+            ]
         }
     }
 }

@@ -20,6 +20,8 @@ public class NomaiSky : ModBehaviour {
     (int x, int y, int z) currentCenter = (0, 0, 0);
     readonly Dictionary<(int x, int y, int z), (string name, string starName, float radius, Color32 color, Vector3 offset)> galacticMap = [];
     readonly Dictionary<(int x, int y, int z), (string name, float radius, Color32 color, string starName)> otherModsSystems = [];
+    readonly List<(int x, int y, int z)> known = [];
+    GameObject visitedLines, distantLines, visitedRings;
     readonly List<(int x, int y, int z)> visited = [(0, 0, 0)];
     public readonly int systemRadius = 200000;
     public readonly int entryRadius = 100000; /*system max radius = 91065.5 ; because:
@@ -43,15 +45,25 @@ public class NomaiSky : ModBehaviour {
         // Use Start() instead.
     }
     public void Start() {
-        // Starting here, you'll have access to OWML's mod helper.
+        //Starting here, you'll have access to OWML's mod helper.
         ModHelper.Console.WriteLine("Nomai's Sky is loaded!", MessageType.Success);
-        // Get the New Horizons API and load configs
+        //Get the New Horizons API and load configs
         NewHorizons = ModHelper.Interaction.TryGetModApi<INewHorizons>("xen.NewHorizons");
         NewHorizons.LoadConfigs(this);
-        // Harmony
+        //Harmony
         new Harmony("Vambok.NomaiSky").PatchAll(System.Reflection.Assembly.GetExecutingAssembly());
-        // Initializations
+        //Initializations
+        //  DLC?
         hasDLC = EntitlementsManager.IsDlcOwned() == EntitlementsManager.AsyncOwnershipStatus.Owned;
+        //  Known systems:
+        string knownSystemsFile = Path.Combine(ModHelper.Manifest.ModFolderPath, "systems", "visitedSystems.txt");
+        if(!File.Exists(knownSystemsFile)) File.WriteAllText(knownSystemsFile, "(0, 0, 0)" + Environment.NewLine);
+        string[] visitedFile = File.ReadAllLines(knownSystemsFile);
+        foreach(string visitedSystem in visitedFile) {
+            int[] coords = Array.ConvertAll(visitedSystem.Substring(1, visitedSystem.Length - 2).Split(','), int.Parse);
+            known.Add((coords[0], coords[1], coords[2]));
+        }
+        //  Other mods installed:
         otherModsSystems[(0, 0, 0)] = ("SolarSystem", 2000, new Color32(255, 125, 9, 255), "Sun");
         foreach(IModBehaviour mod in ModHelper.Interaction.GetMods()) {
             switch(mod.ModHelper.Manifest.UniqueName) {//+00(story) +0+(Jams) 00+(Owlks) -0+(crossover) -00(systems) -0-(reals) 00-(fun) +0-(fun story)
@@ -142,14 +154,15 @@ public class NomaiSky : ModBehaviour {
                 otherModsSystems[(1, 0, -1)] = ("2walker2.OogaBooga", 700, new Color32(181, 161, 118, 0), "Spark");
                 break;
             default:
-            //case "manifest_uniqueName":
-            //    otherModsSystems[(x, y, z)] = ("starSystem", "size", new Color32("tint.r", "tint.g", "tint.b", "tint.a"), "name");
+                //case "manifest_uniqueName":
+                //    otherModsSystems[(x, y, z)] = ("starSystem", "size", new Color32("tint.r", "tint.g", "tint.b", "tint.a"), "name");
                 break;
             }
         }
+        //  Init starting system:
         ModHelper.Events.Unity.RunWhen(PlayerData.IsLoaded, InitSolarSystem);
+        //  Spawn into it:
         NewHorizons.GetStarSystemLoadedEvent().AddListener(SpawnIntoSystem);
-        // Example of accessing game code.
         //OnCompleteSceneLoad(OWScene.TitleScreen, OWScene.TitleScreen); // We start on title screen
         LoadManager.OnStartSceneLoad += OnStartSceneLoad;
         LoadManager.OnCompleteSceneLoad += OnCompleteSceneLoad;
@@ -176,6 +189,30 @@ public class NomaiSky : ModBehaviour {
     }
 
     // GALACTIC MAP:
+    public override void Configure(IModConfig config) {
+        if(LoadManager.GetCurrentScene() == OWScene.SolarSystem) {
+            switch(config.GetSettingsValue<string>("Visited systems display type")) {
+            case "Lines":
+                visitedLines.SetActive(true);
+                distantLines.SetActive(false);
+                visitedRings.SetActive(false);
+                break;
+            case "All lines":
+                visitedLines.SetActive(true);
+                distantLines.SetActive(true);
+                visitedRings.SetActive(false);
+                break;
+            case "Rings":
+                visitedLines.SetActive(false);
+                visitedRings.SetActive(true);
+                break;
+            default:
+                visitedLines.SetActive(false);
+                visitedRings.SetActive(false);
+                break;
+            }
+        }
+    }
     (string, string, float, Color32, Vector3) GetPlaceholder(int x, int y, int z) {
         Random128.Initialize(galaxyName, x, y, z);
         if(otherModsSystems.ContainsKey((x, y, z))) {
@@ -274,33 +311,128 @@ public class NomaiSky : ModBehaviour {
         RFVs._referenceFrame = OWRs.GetReferenceFrame();
         RFs.SetActive(true);
 
-        Vector3 currentOffset = galacticMap[currentCenter].offset - Locator.GetCenterOfTheUniverse().GetStaticReferenceFrame().gameObject.transform.position;
+        Transform sunTransform = Locator.GetCenterOfTheUniverse().GetStaticReferenceFrame().gameObject.transform;
+        Vector3 currentOffset = galacticMap[currentCenter].offset - sunTransform.position;
         int mapWarpPower = (int)(mapRadius * warpPower);
         string starName;
         float radius;
         Color32 color;
         Vector3 offset;
+        (int, int, int) currentCoords;
+        Dictionary<(int, int, int), Vector3> systemPositions = [];
         for(int x = -mapWarpPower;x <= mapWarpPower;x++) {
             for(int y = -mapWarpPower / 2;y <= mapWarpPower / 2;y++) {
                 for(int z = -mapWarpPower;z <= mapWarpPower;z++) {
                     if((x, y, z) != (0, 0, 0)) {
-                        if(galacticMap.ContainsKey((currentCenter.x + x, currentCenter.y + y, currentCenter.z + z))) {
-                            (_, starName, radius, color, offset) = galacticMap[(currentCenter.x + x, currentCenter.y + y, currentCenter.z + z)];
+                        currentCoords = (currentCenter.x + x, currentCenter.y + y, currentCenter.z + z);
+                        if(galacticMap.ContainsKey(currentCoords)) {
+                            (_, starName, radius, color, offset) = galacticMap[currentCoords];
                             GameObject star = Instantiate(s);
                             star.name = starName;
                             star.GetComponent<MeshRenderer>().material.SetColor("_EmissionColor", 2 * (Color)color);
-                            star.transform.position = 2 * systemRadius * new Vector3(x, y, z) + offset - currentOffset;
+                            Vector3 systemPosition = 2 * systemRadius * new Vector3(x, y, z) + offset - currentOffset;
+                            systemPositions.Add(currentCoords, systemPosition);
+                            star.transform.position = systemPosition;
                             star.transform.localScale = radius * Vector3.one;
-                            star.AddComponent<MVBGalacticMap>().Initializator((currentCenter.x + x, currentCenter.y + y, currentCenter.z + z), starName);
+                            star.AddComponent<MVBGalacticMap>().Initializator(currentCoords, starName);
                             MakeProxy(starName, star, radius, color);
                         } else {
-                            ModHelper.Console.WriteLine("Galactic key not found: " + (currentCenter.x + x, currentCenter.y + y, currentCenter.z + z).ToString(), MessageType.Error);
+                            ModHelper.Console.WriteLine("Galactic key not found: " + currentCoords.ToString(), MessageType.Error);
                         }
                     }
                 }
             }
         }
         Destroy(s);
+        //Ring prefab
+        s = new("Ring");
+        LineRenderer lr = s.AddComponent<LineRenderer>();
+        lr.useWorldSpace = false;
+        lr.loop = true;
+        int segments = 32;
+        int ringRadius = 30000;
+        lr.widthMultiplier = 300;
+        lr.material = new Material(Shader.Find("Sprites/Default"));
+        lr.startColor = lr.endColor = Color.green;
+        lr.positionCount = segments * 3;
+        Vector3[] points = new Vector3[3 * segments];
+        float angle;
+        for(int i = 0;i < segments;i++) {
+            angle = i * 2 * Mathf.PI / segments;
+            points[i] = new Vector3(Mathf.Cos(angle), 0, Mathf.Sin(angle)) * ringRadius;
+        }
+        for(int i = 0;i < segments/4;i++) {
+            angle = i * 2 * Mathf.PI / segments;
+            points[i + segments] = new Vector3(Mathf.Cos(angle), Mathf.Sin(angle), 0) * ringRadius;
+        }
+        for(int i = 0;i < segments;i++) {
+            angle = i * 2 * Mathf.PI / segments;
+            points[i + 5 * segments / 4] = new Vector3(0, Mathf.Cos(angle), Mathf.Sin(angle)) * ringRadius;
+        }
+        for(int i = segments/4;i < segments;i++) {
+            angle = i * 2 * Mathf.PI / segments;
+            points[i + 2 * segments] = new Vector3(Mathf.Cos(angle), Mathf.Sin(angle), 0) * ringRadius;
+        }
+        lr.SetPositions(points);
+        //Make visit markers
+        visitedRings = new GameObject("VisitedRings");
+        visitedRings.transform.SetParent(sunTransform);
+        visitedLines = new GameObject("VisitedLines");
+        visitedLines.transform.SetParent(sunTransform);
+        distantLines = new GameObject("DistantLines");
+        distantLines.transform.SetParent(visitedLines.transform);
+        Vector3 posA, posB = Vector3.zero;
+        bool aInRange, bInRange = false;
+        GameObject lineObj;
+        for(int i = 0;i < known.Count - 1;i++) {
+            aInRange = systemPositions.TryGetValue(known[i], out posA);
+            bInRange = systemPositions.TryGetValue(known[i + 1], out posB);
+            if(!aInRange) posA = new Vector3(known[i].x - currentCenter.x, known[i].y - currentCenter.y, known[i].z - currentCenter.z) * 2 * systemRadius - currentOffset;
+            if(!bInRange) posB = new Vector3(known[i + 1].x - currentCenter.x, known[i + 1].y - currentCenter.y, known[i + 1].z - currentCenter.z) * 2 * systemRadius - currentOffset;
+            if(aInRange) {
+                lineObj = Instantiate(s);
+                lineObj.name = "Ring" + i;
+                lineObj.transform.SetParent(visitedRings.transform);
+                lineObj.transform.position = posA;
+            }
+            lineObj = new("Line" + i);
+            lineObj.transform.SetParent((aInRange || bInRange) ? visitedLines.transform : distantLines.transform);
+            lr = lineObj.AddComponent<LineRenderer>();
+            lr.useWorldSpace = false;
+            lr.positionCount = 2;
+            lr.widthMultiplier = 200;
+            lr.SetPositions([posA, posB]);
+            lr.material = new Material(Shader.Find("Sprites/Default"));
+            lr.startColor = (known[i] == currentCenter ? Color.clear : (aInRange ? Color.white : Color.red));
+            lr.endColor = (known[i + 1] == currentCenter ? Color.clear : (bInRange ? Color.white : Color.red));
+        }
+        if(bInRange) {
+            lineObj = Instantiate(s);
+            lineObj.name = "Ring" + (known.Count - 1);
+            lineObj.transform.SetParent(visitedRings.transform);
+            lineObj.transform.position = posB;
+        }
+        Destroy(s);
+        switch(ModHelper.Config.GetSettingsValue<string>("Visited systems display type")) {
+        case "Lines":
+            visitedLines.SetActive(true);
+            distantLines.SetActive(false);
+            visitedRings.SetActive(false);
+            break;
+        case "All lines":
+            visitedLines.SetActive(true);
+            distantLines.SetActive(true);
+            visitedRings.SetActive(false);
+            break;
+        case "Rings":
+            visitedLines.SetActive(false);
+            visitedRings.SetActive(true);
+            break;
+        default:
+            visitedLines.SetActive(false);
+            visitedRings.SetActive(false);
+            break;
+        }
     }
     public void MakeProxy(string name, GameObject planetGO, float radius, Color tint) {
         GameObject proxy = new($"{name}_Proxy");
@@ -390,6 +522,10 @@ public class NomaiSky : ModBehaviour {
                         NewHorizons.ChangeCurrentStarSystem(galacticMap[newCoords].name);
                     }
                 }
+            }
+            if(!known.Contains(newCoords)) {
+                File.AppendAllText(Path.Combine(ModHelper.Manifest.ModFolderPath, "systems", "visitedSystems.txt"), newCoords + Environment.NewLine);
+                known.Add(newCoords);
             }
             NewHorizons.CreatePlanet("{\"name\": \"Bel-O-Kan of " + galacticMap[currentCenter].starName + "\",\"$schema\": \"https://raw.githubusercontent.com/Outer-Wilds-New-Horizons/new-horizons/main/NewHorizons/Schemas/body_schema.json\",\"starSystem\": \"" + galacticMap[currentCenter].name + "\",\"Base\": {\"groundSize\": 50, \"surfaceSize\": 50, \"surfaceGravity\": 0},\"Orbit\": {\"showOrbitLine\": false,\"semiMajorAxis\": " + (systemRadius * (1 + 2.83f * mapRadius * warpPower) / 3.5f).ToString(CultureInfo.InvariantCulture) + ",\"primaryBody\": \"" + galacticMap[currentCenter].starName + "\"},\"ShipLog\": {\"mapMode\": {\"remove\": true}}}", Instance);
             visited.Add(newCoords);
@@ -844,7 +980,6 @@ public class NomaiSky : ModBehaviour {
                     colorA = (byte)Random128.Rng.Range(0, 256);
                 }
                 if(i % Mathf.CeilToInt((float)height / ringData[0]) == 0) {
-                    ModHelper.Console.WriteLine(128 - ringData[0] + i / Mathf.CeilToInt((float)height / ringData[0]) + " i:" + i + " rd0:" + ringData[0]);
                     ringDataM[128 - ringData[0] + i / Mathf.CeilToInt((float)height / ringData[0])] = colorA;//ringdata[0]=1-69
                 }
                 data[i * 4] = colorR;
@@ -1111,11 +1246,12 @@ public class NomaiSky : ModBehaviour {
 //TODO:
 //  add mysterious artefacts (one / 10 systems) that increase warpPower towards 1
 //  warp loading black (not freeze)
-//  add map indicator for visited systems
+//  handle different save profiles (visitedSystem.txt)
 //MAYBE?:
 //  add heightmaps mipmap1
 //  correct textures, big planets gets higher res?
 //  add random Color utility
+//  fix floating point shaking
 //TO TEST:
 //DONE:
 //  bigger referenceframevolume (entryradius)
@@ -1145,3 +1281,4 @@ public class NomaiSky : ModBehaviour {
 //  remove shiplog interstellar mode!
 //  reduce map furthest zoom
 //  no zoom when selecting on map
+//  add map indicator for visited systems (with config)
