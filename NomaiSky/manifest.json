@@ -4,11 +4,7 @@
   "author": "Vambok, Trifid, Lezzlebit",
   "name": "Nomai's Sky",
   "uniqueName": "Vambok.NomaiSky",
-<<<<<<< Updated upstream
-  "version": "0.3.1",
-=======
   "version": "0.3.2",
->>>>>>> Stashed changes
   "owmlVersion": "2.15.1",
   "dependencies": ["xen.NewHorizons"],
   "pathsToPreserve": ["planets", "systems"]
