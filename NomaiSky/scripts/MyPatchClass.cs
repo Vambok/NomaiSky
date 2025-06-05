@@ -12,7 +12,7 @@ public static class MyPatchClass {
     [HarmonyPostfix]
     [HarmonyPatch(typeof(TitleScreenManager), nameof(TitleScreenManager.FadeInTitleLogo))]
     public static void FadeInTitleLogo(TitleScreenManager __instance) {
-        __instance._gameVersionTextDisplay.text += $"{Environment.NewLine}Nomai's Sky : {NomaiSky.version}";
+        __instance._gameVersionTextDisplay.text += $"{Environment.NewLine}Nomai's Sky : {NomaiSky.Instance.ModHelper.Manifest.Version}";
     }
     //Ship warp drive
     [HarmonyPrefix]
@@ -38,7 +38,7 @@ public static class MyPatchClass {
     static bool GetHUDDisplayName_Prefix(ReferenceFrame __instance, ref string __result) {
         MVBGalacticMap mapParameters = __instance._attachedOWRigidbody.GetComponent<MVBGalacticMap>();
         if (mapParameters != null) {
-            __result = mapParameters.mapName;
+            __result = mapParameters.mapName;// + Environment.NewLine + mapParameters.coords;
             return false;
         }
         return true;

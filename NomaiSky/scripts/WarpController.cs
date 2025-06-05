@@ -30,7 +30,7 @@ public class WarpController : MonoBehaviour {
         } else if(Locator.GetCenterOfTheUniverse() != null) {
             // WARPING:
             Vector3 currentSystemCubePosition = Locator.GetCenterOfTheUniverse().GetOffsetPosition() - currentOffset;
-            if(currentSystemCubePosition.magnitude > NomaiSky.Instance.systemRadius) {
+            if(currentSystemCubePosition.magnitude > NomaiSky.systemRadius) {
                 NomaiSky.Instance.SpaceExploration(currentSystemCubePosition);
             }
         }
