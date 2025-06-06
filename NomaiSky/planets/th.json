@@ -1,0 +1,36 @@
+{
+	"$schema": "https://raw.githubusercontent.com/Outer-Wilds-New-Horizons/new-horizons/main/NewHorizons/Schemas/body_schema.json",
+	"name": "Timber Hearth",
+	"Props": {
+		"details": [
+			{
+				"assetBundle": "assets/trifid_nomaisky",
+				"path": "Assets/NomaiSky/FuelSiphon.prefab",
+				"keepLoaded": true,
+				"position": {
+					"x": -13.21883,
+					"y": -63.78138,
+					"z": 221.2469
+				},
+				"alignRadial": true
+			}
+		],
+		/*"geysers": [
+			{
+				"tint": {
+					"r": 255,
+					"g": 128,
+					"b": 0,
+					"a": 255
+				},
+				"volume": 0.1,
+				"position": {
+					"x": -18.84191,
+					"y": -63.56408,
+					"z": 220.9563
+				},
+				"alignRadial": true
+			}
+		]*/
+	}
+}
