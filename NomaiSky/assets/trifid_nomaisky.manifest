@@ -1,0 +1,70 @@
+ManifestFileVersion: 0
+CRC: 1535758827
+Hashes:
+  AssetFileHash:
+    serializedVersion: 2
+    Hash: c239266607f3991d7a690e69178fc294
+  TypeTreeHash:
+    serializedVersion: 2
+    Hash: c634e54f8c97859f550e94e0744afec2
+HashAppended: 0
+ClassTypes:
+- Class: 1
+  Script: {instanceID: 0}
+- Class: 4
+  Script: {instanceID: 0}
+- Class: 21
+  Script: {instanceID: 0}
+- Class: 23
+  Script: {instanceID: 0}
+- Class: 28
+  Script: {instanceID: 0}
+- Class: 33
+  Script: {instanceID: 0}
+- Class: 43
+  Script: {instanceID: 0}
+- Class: 48
+  Script: {instanceID: 0}
+- Class: 65
+  Script: {instanceID: 0}
+- Class: 83
+  Script: {instanceID: 0}
+- Class: 89
+  Script: {instanceID: 0}
+- Class: 108
+  Script: {instanceID: 0}
+- Class: 114
+  Script: {fileID: 11500000, guid: fbb2498122f7e23a2e87544333cb528f, type: 3}
+- Class: 114
+  Script: {fileID: 11500000, guid: 184d82c29094846dbdd0c1f407f5f4b8, type: 3}
+- Class: 114
+  Script: {fileID: 11500000, guid: dfadbb74703c0fc4f9e7c128dffd97ac, type: 3}
+- Class: 114
+  Script: {fileID: 11500000, guid: c1e03d384261f6f301ef6513a478c3a8, type: 3}
+- Class: 114
+  Script: {fileID: 11500000, guid: f913c288c393f80a7e923fc1c775f4fb, type: 3}
+- Class: 114
+  Script: {fileID: 11500000, guid: da1629ea319b3d4b9706b8e07420a4e4, type: 3}
+- Class: 114
+  Script: {fileID: 11500000, guid: 3764d89beefddfb963f973f9a1e29bad, type: 3}
+- Class: 114
+  Script: {fileID: 11500000, guid: 4d37ab8d4d1e425918e8172c84cb8288, type: 3}
+- Class: 114
+  Script: {fileID: -1111062325, guid: e68f4c53daddb864aa27158957ee9bea, type: 3}
+- Class: 114
+  Script: {fileID: 941628244, guid: e68f4c53daddb864aa27158957ee9bea, type: 3}
+- Class: 115
+  Script: {instanceID: 0}
+- Class: 135
+  Script: {instanceID: 0}
+- Class: 136
+  Script: {instanceID: 0}
+- Class: 198
+  Script: {instanceID: 0}
+- Class: 199
+  Script: {instanceID: 0}
+SerializeReferenceClassIdentifiers: []
+Assets:
+- Assets/NomaiSky/KeroseneResource.prefab
+- Assets/NomaiSky/FuelSiphon.prefab
+Dependencies: []

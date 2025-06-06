@@ -81,4 +81,17 @@ public static class MyPatchClass {
     static void OnTargetReferenceFrame_Postfix(MapController __instance) {
         if(__instance._targetTransform != null && __instance._targetTransform.GetComponent<MVBGalacticMap>() != null) __instance._lockedToTargetTransform = false;
     }
+
+    // hide vision torch prompt for refueling tool
+    [HarmonyPostfix, HarmonyPatch(typeof(ToolModeUI), nameof(ToolModeUI.Update))]
+    private static void ToolModeUI_Update(ToolModeUI __instance)
+    {
+        if (OWInput.IsInputMode(InputMode.Character) && __instance._toolSwapper.GetToolMode() == ToolMode.Item)
+        {
+            if (__instance._toolSwapper.GetItemCarryTool().GetHeldItem() is RefuelingTool)
+            {
+                __instance._projectPrompt.SetVisibility(false);
+            }
+        }
+    }
 }

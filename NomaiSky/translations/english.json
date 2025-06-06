@@ -1,3 +1,7 @@
 {
-	"$schema": "https://raw.githubusercontent.com/outer-wilds-new-horizons/new-horizons/main/NewHorizons/Schemas/translation_schema.json"
+	"$schema": "https://raw.githubusercontent.com/outer-wilds-new-horizons/new-horizons/main/NewHorizons/Schemas/translation_schema.json",
+	"UIDictionary": {
+		"RefuelingTool_Name": "Fuel Siphon",
+		"RefuelingTool_Prompt": "Siphon"
+	}
 }
