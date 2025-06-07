@@ -55,6 +55,12 @@ public class RefuelingTool : OWItem
         Instance = this;
         _type = ItemType.VisionTorch;
 
+        GlobalMessenger.AddListener("GamePaused", HidePrompt);
+        GlobalMessenger.AddListener("GameUnpaused", ShowPrompt);
+        GlobalMessenger.AddListener("EnterMapView", HidePrompt);
+        GlobalMessenger.AddListener("ExitMapView", ShowPrompt);
+        GlobalMessenger.AddListener("EnterFlightConsole", HidePrompt);
+        GlobalMessenger.AddListener("ExitFlightConsole", ShowPrompt);
         base.Awake();
     }
 
@@ -113,6 +119,12 @@ public class RefuelingTool : OWItem
 
     public override void OnDestroy()
     {
+        GlobalMessenger.RemoveListener("GamePaused", HidePrompt);
+        GlobalMessenger.RemoveListener("GameUnpaused", ShowPrompt);
+        GlobalMessenger.RemoveListener("EnterMapView", HidePrompt);
+        GlobalMessenger.RemoveListener("ExitMapView", ShowPrompt);
+        GlobalMessenger.AddListener("EnterFlightConsole", HidePrompt);
+        GlobalMessenger.AddListener("ExitFlightConsole", ShowPrompt);
         base.OnDestroy();
         Destroy(_vacuumAudioSource.gameObject);
         Destroy(_fluidAudioSource.gameObject);
@@ -260,6 +272,9 @@ public class RefuelingTool : OWItem
             }
         }
     }
+
+    void HidePrompt() => _activatePrompt.SetVisibility(false);
+    void ShowPrompt() => _activatePrompt.SetVisibility(true);
 
     public void ActivateTool()
     {

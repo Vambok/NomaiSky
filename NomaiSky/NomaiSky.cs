@@ -577,13 +577,17 @@ public class NomaiSky : ModBehaviour {
                 if(entryPosition != Vector3.zero) {
                     shipSpawnPoint.position = entryPosition;
                     shipSpawnPoint.rotation = entryRotation;
+                    ModHelper.Events.Unity.FireInNUpdates(() => {
+                        ship.transform.GetComponent<ShipBody>().SetVelocity(entrySpeed);
+                        ModHelper.Console.WriteLine("Ship speed " + ship.body.GetVelocity());//TEST
+                    }, 61);
                 } else {
                     shipSpawnPoint.position = new Vector3(0, 10000, -34100);
                     shipSpawnPoint.eulerAngles = new Vector3(16.334f, 0, 0);
                 }
             }
         }
-        ModHelper.Events.Unity.FireOnNextUpdate(GenerateNeighborhood);
+        entryPosition = Vector3.zero;
         ModHelper.Events.Unity.FireInNUpdates(() => {
             Transform shipTemp = Locator.GetShipTransform();
             ship = (shipTemp, Locator.GetShipBody(), shipTemp.GetComponent<ShipResources>(), shipTemp.GetComponentInChildren<ShipCockpitController>(), shipTemp.GetComponentInChildren<SuitPickupVolume>(), shipTemp.GetComponent<WarpController>());
@@ -597,13 +601,9 @@ public class NomaiSky : ModBehaviour {
             ship.warp.currentOffset = galacticMap[currentCenter].offset;
             if(!hasRM) ship.resources._maxFuel = maxFuel;
             ship.resources._currentFuel = remainingFuel;
-            if(entryPosition != Vector3.zero) {
-                ship.transform.GetComponent<ShipBody>().SetVelocity(entrySpeed);
-                ModHelper.Console.WriteLine("Ship speed " + ship.body.GetVelocity());//TEST
-                entryPosition = Vector3.zero;
-            }
+            GenerateNeighborhood();
             ModHelper.Console.WriteLine("Loaded into " + galacticMap[currentCenter].starName + " (" + systemName + ")! Current galaxy: " + galaxyName, MessageType.Success);
-        }, 61);
+        }, 3);
     }
 
     // GENERATION:
@@ -740,7 +740,8 @@ public class NomaiSky : ModBehaviour {
                         "scale": {{(radius / 500f).ToString(CultureInfo.InvariantCulture)}},
                         "selectable": false
                     }
-                }
+                },
+                "MapMarker": {"enabled": true}
             }
             """;
         return finalJson;
