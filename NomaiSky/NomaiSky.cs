@@ -13,7 +13,8 @@ public class NomaiSky : ModBehaviour {
     // START:
     public static NomaiSky Instance;
     INewHorizons NewHorizons;
-    bool hasDLC;
+    bool hasDLC = false;
+    bool hasRM = false;
     // GALACTIC MAP:
     const int mapRadius = 5;
     readonly float warpPower = 1f; // min 0.2 to max 1
@@ -33,10 +34,16 @@ public class NomaiSky : ModBehaviour {
     // WARPING:
     Vector3 entryPosition;
     Quaternion entryRotation;
+    Vector3 entrySpeed;
+    const float maxFuel = 10000;
+    float remainingFuel = maxFuel;
+    const float warpDriveEfficiency = 1f;
     // GENERATION:
     readonly int galaxyName = 0;
     readonly List<(float esperance, int max, bool canRepeat, string prop)> rareProps = [];
     const string generationVersion = "0.3.2";//Changing this will cause a rebuild of all previously visited systems, increment only when changing the procedural generation!
+    // UTILS:
+    (Transform transform, OWRigidbody body, ShipResources resources, ShipCockpitController cockpit, SuitPickupVolume suit, WarpController warp) ship;
 
     // START:
     public void Awake() {
@@ -70,6 +77,9 @@ public class NomaiSky : ModBehaviour {
         otherModsSystems[(0, 0, 0)] = ("SolarSystem", 2000, new Color32(255, 125, 9, 255), "Sun");
         foreach(IModBehaviour mod in ModHelper.Interaction.GetMods()) {
             switch(mod.ModHelper.Manifest.UniqueName) {//+00(story) +0+(Jams) 00+(Owlks) -0+(crossover) -00(systems) -0-(reals) 00-(fun) +0-(fun story)
+            case "Stonesword.ResourceManagement":
+                hasRM = true;
+                break;
             case "GameWyrm.HearthsNeighbor":
                 otherModsSystems[(1, 0, 0)] = ("GameWyrm.HearthsNeighbor", 3000, new Color32(150, 150, 255, 255), "Neighbor Sun");
                 break;
@@ -182,13 +192,6 @@ public class NomaiSky : ModBehaviour {
         ModHelper.Console.WriteLine("HM done! "+toto, MessageType.Success); //TEST*/
     }
     void Update() {
-        /*if(Locator.GetCenterOfTheUniverse() != null) {
-            // WARPING:
-            Vector3 currentSystemCubePosition = Locator.GetCenterOfTheUniverse().GetOffsetPosition() - galacticMap[currentCenter].offset;
-            if(currentSystemCubePosition.magnitude > systemRadius) {
-                SpaceExploration(currentSystemCubePosition);
-            }
-        }*/
     }
 
     // GALACTIC MAP:
@@ -224,7 +227,7 @@ public class NomaiSky : ModBehaviour {
             return (name, starName, radius, color, new Vector3(Random128.Rng.Range(entryRadius - systemRadius, systemRadius - entryRadius), Random128.Rng.Range(entryRadius - systemRadius, systemRadius - entryRadius), Random128.Rng.Range(entryRadius - systemRadius, systemRadius - entryRadius)));
         } else {
             StarInitializator(out string starName, out float radius, out Color32 starColor);
-            //Random128.Rng.Start("offset");//Offset consistency not needed to be cool
+            //Random128.Rng.Start("offset");//Offset consistency not needed to be cool?
             return ("NomaiSky_" + galaxyName + "-" + x + "-" + y + "-" + z, starName, radius, starColor, new Vector3(Random128.Rng.Range(entryRadius - systemRadius, systemRadius - entryRadius), Random128.Rng.Range(entryRadius - systemRadius, systemRadius - entryRadius), Random128.Rng.Range(entryRadius - systemRadius, systemRadius - entryRadius)));
         }
     }
@@ -267,6 +270,8 @@ public class NomaiSky : ModBehaviour {
             break;
         }
         if(newSystem != (0, 0, 0)) {
+            ShipLogFactSave getRemainingFuel = PlayerData.GetShipLogFactSave("NomaiSky_remainingFuel");
+            if(getRemainingFuel != null) remainingFuel = Single.Parse(getRemainingFuel.id);
             ModHelper.Console.WriteLine("Warp!", MessageType.Success);//TEST
             WarpToSystem(newSystem);
         }
@@ -482,11 +487,23 @@ public class NomaiSky : ModBehaviour {
     // WARPING:
     public void MapExploration(ReferenceFrame targetReferenceFrame, ScreenPrompt prompt) {
         MVBGalacticMap data = targetReferenceFrame.GetOWRigidBody().GetComponent<MVBGalacticMap>();
-        if(data != null) {
-            prompt.SetText($"Warp to {data.mapName}  [{data.coords.x} : {data.coords.y} : {data.coords.z}]");
+        if(data != null && PlayerState.IsInsideShip()) {
+            float warpFuelConsumption = 0.003f * (targetReferenceFrame.GetOWRigidBody().transform.position - ship.transform.position).magnitude / warpDriveEfficiency;//Ship flying consumption = 1.4f * Mathf.Sqrt((targetReferenceFrame.GetOWRigidBody().transform.position - ship.transform.position).magnitude);
+            prompt.SetText($"Warp to {data.mapName}  (-{Mathf.Ceil(100 * warpFuelConsumption / ship.resources._maxFuel)}% fuel){Environment.NewLine}[{data.coords.x} : {data.coords.y} : {data.coords.z}]");
             prompt.SetVisibility(true);
             if(OWInput.IsNewlyPressed(InputLibrary.markEntryOnHUD)) {
-                WarpToSystem(data.coords);
+                if(warpFuelConsumption > ship.resources._currentFuel) {
+                    string fuelNotif = "Not enough fuel (" + Mathf.Ceil(100 * ship.resources._currentFuel / ship.resources._maxFuel) + "% left)";
+                    ship.warp.fuelPrompt.SetText(fuelNotif);
+                    if(!ship.warp.fuelPrompt.IsVisible()) {
+                        NotificationManager.SharedInstance.PostNotification(new NotificationData(NotificationTarget.Ship, fuelNotif, 1f, true), false);
+                        ship.warp.fuelPrompt.SetVisibility(true);
+                        ModHelper.Events.Unity.FireInNUpdates(() => ship.warp.fuelPrompt.SetVisibility(false), Mathf.CeilToInt(1 / Time.deltaTime));
+                    }
+                } else {
+                    ship.resources._currentFuel -= warpFuelConsumption;
+                    WarpToSystem(data.coords);
+                }
             }
         } else {
             prompt.SetVisibility(false);
@@ -503,7 +520,8 @@ public class NomaiSky : ModBehaviour {
                 currentSystemCubePosition += galacticMap[actualCube].offset;
                 if(currentSystemCubePosition.magnitude < entryRadius) {
                     entryPosition = -currentSystemCubePosition;
-                    entryRotation = Locator.GetShipTransform().rotation;
+                    entryRotation = ship.transform.rotation;
+                    entrySpeed = ship.body.GetVelocity();
                     WarpToSystem(actualCube);
                 }
             }
@@ -513,6 +531,8 @@ public class NomaiSky : ModBehaviour {
         bool waitForWrite = false;
         (int x, int y, int z) = currentCenter;
         currentCenter = newCoords;
+        remainingFuel = ship.resources._currentFuel;
+        PlayerData._currentGameSave.shipLogFactSaves["NomaiSky_remainingFuel"] = new ShipLogFactSave(remainingFuel.ToString(CultureInfo.InvariantCulture));
         if(!visited.Contains(newCoords)) {
             DictUpdate(currentCenter.x - x, currentCenter.y - y, currentCenter.z - z);
             if(!otherModsSystems.ContainsKey(newCoords)) {
@@ -563,23 +583,27 @@ public class NomaiSky : ModBehaviour {
                 }
             }
         }
-        entryPosition = Vector3.zero;
+        ModHelper.Events.Unity.FireOnNextUpdate(GenerateNeighborhood);
         ModHelper.Events.Unity.FireInNUpdates(() => {
+            Transform shipTemp = Locator.GetShipTransform();
+            ship = (shipTemp, Locator.GetShipBody(), shipTemp.GetComponent<ShipResources>(), shipTemp.GetComponentInChildren<ShipCockpitController>(), shipTemp.GetComponentInChildren<SuitPickupVolume>(), shipTemp.GetComponent<WarpController>());
             if(!otherModsSystems.ContainsKey(currentCenter)) {
                 PlayerSpawner playerSpawner = Locator.GetPlayerBody().GetComponent<PlayerSpawner>();
                 playerSpawner.DebugWarp(playerSpawner.GetSpawnPoint(SpawnLocation.Ship));
-                SuitPickupVolume mySuit = Locator.GetShipBody().GetComponentInChildren<SuitPickupVolume>();
-                mySuit.OnPressInteract(mySuit._interactVolume.GetInteractionAt(mySuit._pickupSuitCommandIndex).inputCommand);
-                Locator.GetShipBody().GetComponentInChildren<ShipCockpitController>().OnPressInteract();
+                ship.suit.OnPressInteract(ship.suit._interactVolume.GetInteractionAt(ship.suit._pickupSuitCommandIndex).inputCommand);
+                ship.cockpit.OnPressInteract();
             }
-            if(Locator.GetShipBody().GetComponent<WarpController>() == null) {
-                Locator.GetShipBody().gameObject.AddComponent<WarpController>().currentOffset = galacticMap[currentCenter].offset;
-            } else {
-                Locator.GetShipBody().gameObject.GetComponent<WarpController>().currentOffset = galacticMap[currentCenter].offset;
+            if(ship.warp == null) ship.warp = ship.transform.gameObject.AddComponent<WarpController>();
+            ship.warp.currentOffset = galacticMap[currentCenter].offset;
+            if(!hasRM) ship.resources._maxFuel = maxFuel;
+            ship.resources._currentFuel = remainingFuel;
+            if(entryPosition != Vector3.zero) {
+                ship.transform.GetComponent<ShipBody>().SetVelocity(entrySpeed);
+                ModHelper.Console.WriteLine("Ship speed " + ship.body.GetVelocity());//TEST
+                entryPosition = Vector3.zero;
             }
-            GenerateNeighborhood();
             ModHelper.Console.WriteLine("Loaded into " + galacticMap[currentCenter].starName + " (" + systemName + ")! Current galaxy: " + galaxyName, MessageType.Success);
-        }, 2);
+        }, 61);
     }
 
     // GENERATION:
@@ -640,8 +664,6 @@ public class NomaiSky : ModBehaviour {
                 if(index < 0) index = 0;
                 moonProps[index] = (String.IsNullOrEmpty(moonProps[index]) ? "" : moonProps[index] + ",\n") + "        " + prop;
             }
-
-
             string planetName = PlanetNameGen(i + "Name");
             Directory.CreateDirectory(Path.Combine(path, planetName));
             File.WriteAllText(Path.Combine(path, planetName, planetName + ".json"), PlanetCreator(starName, planetName, minPlanetOrbit + i * planetOrbitSpacing + orbits[i], moonProps[0]));
@@ -660,7 +682,12 @@ public class NomaiSky : ModBehaviour {
                 }
             }
         }
-        return "{\"extras\":{\"mod_config\":{\"version\":\"" + generationVersion + "\"}},\"$schema\":\"https://raw.githubusercontent.com/Outer-Wilds-New-Horizons/new-horizons/main/NewHorizons/Schemas/star_system_schema.json\",\"respawnHere\":true}";
+        return "{\"extras\":{\"mod_config\":{" +
+            "\"version\":\"" + generationVersion + "\"}}," +
+            "\"$schema\":\"https://raw.githubusercontent.com/Outer-Wilds-New-Horizons/new-horizons/main/NewHorizons/Schemas/star_system_schema.json\"," +
+            "\"GlobalMusic\":{\"travelAudio\":\"assets/music/otherside.mp3\"}," +
+            "\"allowOutsideItems\":false," +
+            "\"respawnHere\":true}";
     }
     string StarCreator(string starName, float radius, Color32 starColor) {
         string relativePath = "planets/" + galaxyName + "-" + currentCenter.x + "-" + currentCenter.y + "-" + currentCenter.z + "/" + starName + "/";
@@ -1274,6 +1301,19 @@ public class NomaiSky : ModBehaviour {
 //  handle different save profiles (visitedSystem.txt)
 //  add signals to rare scatter
 //  Gneiss banjo quest
+//  correct scatter function (sample consistency)
+//  add clouds (rain only if)
+//  correct fuel rotation
+//  hardcode array of (x, y, Vector3) for heightmaps
+
+/*check warp travel velocity/death
+ * do 1st
+ * fix fuel tool taking
+ * add fuel vol to systems
+FuelSiphon
+Player_Body/PlayerCamera/ItemCarryTool/VisionTorchSocket/
+*/
+
 //MAYBE?:
 //  add heightmaps mipmap1
 //  correct textures, big planets gets higher res?
@@ -1312,3 +1352,4 @@ public class NomaiSky : ModBehaviour {
 //  add map indicator for visited systems (with config)
 //  rework rare scatter builder (array)
 //  toggle on "show button prompts"
+//  add fuel management

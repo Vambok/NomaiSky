@@ -3,12 +3,16 @@ using UnityEngine;
 namespace NomaiSky;
 
 public class WarpController : MonoBehaviour {
+    PromptManager promptManager;
     ReferenceFrame targetReferenceFrame;
     ScreenPrompt travelPrompt;
+    public ScreenPrompt fuelPrompt;
     public Vector3 currentOffset;
 
     void Awake() {
+        promptManager = Locator.GetPromptManager();
         travelPrompt = new ScreenPrompt(InputLibrary.markEntryOnHUD, "Warp to star system");
+        fuelPrompt = new ScreenPrompt("Not enough fuel");
         GlobalMessenger<ReferenceFrame>.AddListener("TargetReferenceFrame", OnTargetReferenceFrame);
         GlobalMessenger.AddListener("UntargetReferenceFrame", OnUntargetReferenceFrame);
         GlobalMessenger.AddListener("EnterMapView", OnEnterMapView);
@@ -28,7 +32,6 @@ public class WarpController : MonoBehaviour {
                 travelPrompt.SetVisibility(false);
             }
         } else if(Locator.GetCenterOfTheUniverse() != null) {
-            // WARPING:
             Vector3 currentSystemCubePosition = Locator.GetCenterOfTheUniverse().GetOffsetPosition() - currentOffset;
             if(currentSystemCubePosition.magnitude > NomaiSky.systemRadius) {
                 NomaiSky.Instance.SpaceExploration(currentSystemCubePosition);
@@ -37,6 +40,12 @@ public class WarpController : MonoBehaviour {
     }
     void OnTargetReferenceFrame(ReferenceFrame referenceFrame) { targetReferenceFrame = referenceFrame; }
     void OnUntargetReferenceFrame() { targetReferenceFrame = null; }
-    void OnEnterMapView() { Locator.GetPromptManager().AddScreenPrompt(travelPrompt, PromptPosition.BottomCenter); }
-    void OnExitMapView() { Locator.GetPromptManager().RemoveScreenPrompt(travelPrompt, PromptPosition.BottomCenter); }
+    void OnEnterMapView() {
+        promptManager.AddScreenPrompt(travelPrompt, PromptPosition.BottomCenter);
+        promptManager.AddScreenPrompt(fuelPrompt, PromptPosition.Center);
+    }
+    void OnExitMapView() {
+        promptManager.RemoveScreenPrompt(travelPrompt, PromptPosition.BottomCenter);
+        promptManager.RemoveScreenPrompt(fuelPrompt, PromptPosition.Center);
+    }
 }
