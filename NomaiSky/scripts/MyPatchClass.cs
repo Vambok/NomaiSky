@@ -2,6 +2,7 @@ using HarmonyLib;//
 using NewHorizons.OtherMods.CustomShipLogModes;//
 using System;//
 using System.Collections.Generic;//
+using UnityEngine;
 using static System.Reflection.Emit.OpCodes;//
 
 namespace NomaiSky;
@@ -40,6 +41,23 @@ public static class MyPatchClass {
         if (mapParameters != null) {
             __result = mapParameters.mapName;// + Environment.NewLine + mapParameters.coords;
             return false;
+        }
+        return true;
+    }
+    //Refuel from ship
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(PlayerRecoveryPoint), nameof(PlayerRecoveryPoint.OnPressInteract))]
+    static bool OnPressInteract_Prefix(PlayerRecoveryPoint __instance) {
+        if(PlayerState.IsInsideShip()) {
+            ShipResources shipResources = Locator.GetShipTransform().GetComponent<ShipResources>();
+            float neededFuel = PlayerResources._maxFuel - __instance._playerResources.GetFuel();
+            if(shipResources.GetFuel() < neededFuel / 2) {
+                __instance._refuelsPlayer = false;
+                NotificationManager.SharedInstance.PostNotification(new NotificationData(NotificationTarget.All, "Not enough fuel", 1f, true), false);
+            } else {
+                shipResources.DrainFuel(neededFuel);
+                __instance._refuelsPlayer = true;
+            }
         }
         return true;
     }

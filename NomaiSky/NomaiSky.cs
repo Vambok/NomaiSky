@@ -269,9 +269,9 @@ public class NomaiSky : ModBehaviour {
             PlayerData._currentGameSave.shipLogFactSaves["NomaiSky_currentCenter"] = new ShipLogFactSave("(0,0,0)");
             break;
         }
+        ShipLogFactSave getRemainingFuel = PlayerData.GetShipLogFactSave("NomaiSky_remainingFuel");
+        if(getRemainingFuel != null) remainingFuel = Single.Parse(getRemainingFuel.id, CultureInfo.InvariantCulture);
         if(newSystem != (0, 0, 0)) {
-            ShipLogFactSave getRemainingFuel = PlayerData.GetShipLogFactSave("NomaiSky_remainingFuel");
-            if(getRemainingFuel != null) remainingFuel = Single.Parse(getRemainingFuel.id);
             ModHelper.Console.WriteLine("Warp!", MessageType.Success);//TEST
             WarpToSystem(newSystem);
         }
@@ -489,11 +489,11 @@ public class NomaiSky : ModBehaviour {
         MVBGalacticMap data = targetReferenceFrame.GetOWRigidBody().GetComponent<MVBGalacticMap>();
         if(data != null && PlayerState.IsInsideShip()) {
             float warpFuelConsumption = 0.003f * (targetReferenceFrame.GetOWRigidBody().transform.position - ship.transform.position).magnitude / warpDriveEfficiency;//Ship flying consumption = 1.4f * Mathf.Sqrt((targetReferenceFrame.GetOWRigidBody().transform.position - ship.transform.position).magnitude);
-            prompt.SetText($"Warp to {data.mapName}  (-{Mathf.Ceil(100 * warpFuelConsumption / ship.resources._maxFuel)}% fuel){Environment.NewLine}[{data.coords.x} : {data.coords.y} : {data.coords.z}]");
+            prompt.SetText($"Warp to {data.mapName}{Environment.NewLine}[{data.coords.x} : {data.coords.y} : {data.coords.z}]  (-{Mathf.Ceil(100 * warpFuelConsumption / ship.resources._maxFuel)}% fuel)");
             prompt.SetVisibility(true);
             if(OWInput.IsNewlyPressed(InputLibrary.markEntryOnHUD)) {
-                if(warpFuelConsumption > ship.resources._currentFuel) {
-                    string fuelNotif = "Not enough fuel (" + Mathf.Ceil(100 * ship.resources._currentFuel / ship.resources._maxFuel) + "% left)";
+                if(warpFuelConsumption > ship.resources.GetFuel()) {
+                    string fuelNotif = "Not enough fuel (" + Mathf.Ceil(100 * ship.resources.GetFractionalFuel()) + "% left)";
                     ship.warp.fuelPrompt.SetText(fuelNotif);
                     if(!ship.warp.fuelPrompt.IsVisible()) {
                         NotificationManager.SharedInstance.PostNotification(new NotificationData(NotificationTarget.Ship, fuelNotif, 1f, true), false);
@@ -501,7 +501,7 @@ public class NomaiSky : ModBehaviour {
                         ModHelper.Events.Unity.FireInNUpdates(() => ship.warp.fuelPrompt.SetVisibility(false), Mathf.CeilToInt(1 / Time.deltaTime));
                     }
                 } else {
-                    ship.resources._currentFuel -= warpFuelConsumption;
+                    ship.resources.DrainFuel(warpFuelConsumption);
                     WarpToSystem(data.coords);
                 }
             }
@@ -531,7 +531,7 @@ public class NomaiSky : ModBehaviour {
         bool waitForWrite = false;
         (int x, int y, int z) = currentCenter;
         currentCenter = newCoords;
-        remainingFuel = ship.resources._currentFuel;
+        remainingFuel = ship.resources.GetFuel();
         PlayerData._currentGameSave.shipLogFactSaves["NomaiSky_remainingFuel"] = new ShipLogFactSave(remainingFuel.ToString(CultureInfo.InvariantCulture));
         if(!visited.Contains(newCoords)) {
             DictUpdate(currentCenter.x - x, currentCenter.y - y, currentCenter.z - z);
@@ -599,8 +599,9 @@ public class NomaiSky : ModBehaviour {
             }
             if(ship.warp == null) ship.warp = ship.transform.gameObject.AddComponent<WarpController>();
             ship.warp.currentOffset = galacticMap[currentCenter].offset;
+            //ship.transform.GetComponent<PlayerRecoveryPoint>().OnPressInteract();
             if(!hasRM) ship.resources._maxFuel = maxFuel;
-            ship.resources._currentFuel = remainingFuel;
+            ship.resources.SetFuel(remainingFuel);
             GenerateNeighborhood();
             ModHelper.Console.WriteLine("Loaded into " + galacticMap[currentCenter].starName + " (" + systemName + ")! Current galaxy: " + galaxyName, MessageType.Success);
         }, 3);
@@ -1304,17 +1305,9 @@ public class NomaiSky : ModBehaviour {
 //  Gneiss banjo quest
 //  correct scatter function (sample consistency)
 //  add clouds (rain only if)
-//  correct fuel rotation
 //  hardcode array of (x, y, Vector3) for heightmaps
-
-/*check warp travel velocity/death
- * do 1st
- * fix fuel tool taking
- * add fuel vol to systems
-FuelSiphon
-Player_Body/PlayerCamera/ItemCarryTool/VisionTorchSocket/
-*/
-
+//  fix fuel tool taking (FuelSiphon Player_Body/PlayerCamera/ItemCarryTool/VisionTorchSocket/)
+//  add fuel vol to systems (and remove fuel tanks)
 //MAYBE?:
 //  add heightmaps mipmap1
 //  correct textures, big planets gets higher res?
@@ -1354,3 +1347,4 @@ Player_Body/PlayerCamera/ItemCarryTool/VisionTorchSocket/
 //  rework rare scatter builder (array)
 //  toggle on "show button prompts"
 //  add fuel management
+//  refuel suit from ship

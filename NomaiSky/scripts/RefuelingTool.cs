@@ -18,7 +18,7 @@ public class RefuelingTool : OWItem
     private RefuelingResource _submergedResource;
 
     public float Range = 5f;
-    public float Speed = 1000f;
+    public float Speed = 500f;
 
     public ShipFuelGauge FuelGauge;
     private ShipResources _shipResources;
