@@ -1,5 +1,6 @@
 using NewHorizons;
 using NewHorizons.Handlers;
+using Steamworks;
 using UnityEngine;
 
 namespace NomaiSky;
@@ -55,12 +56,7 @@ public class RefuelingTool : OWItem
         Instance = this;
         _type = ItemType.VisionTorch;
 
-        GlobalMessenger.AddListener("GamePaused", HidePrompt);
-        GlobalMessenger.AddListener("GameUnpaused", ShowPrompt);
-        GlobalMessenger.AddListener("EnterMapView", HidePrompt);
-        GlobalMessenger.AddListener("ExitMapView", ShowPrompt);
-        GlobalMessenger.AddListener("EnterFlightConsole", HidePrompt);
-        GlobalMessenger.AddListener("ExitFlightConsole", ShowPrompt);
+        PromptListeners(true);
         base.Awake();
     }
 
@@ -119,12 +115,7 @@ public class RefuelingTool : OWItem
 
     public override void OnDestroy()
     {
-        GlobalMessenger.RemoveListener("GamePaused", HidePrompt);
-        GlobalMessenger.RemoveListener("GameUnpaused", ShowPrompt);
-        GlobalMessenger.RemoveListener("EnterMapView", HidePrompt);
-        GlobalMessenger.RemoveListener("ExitMapView", ShowPrompt);
-        GlobalMessenger.AddListener("EnterFlightConsole", HidePrompt);
-        GlobalMessenger.AddListener("ExitFlightConsole", ShowPrompt);
+        PromptListeners(false);
         base.OnDestroy();
         Destroy(_vacuumAudioSource.gameObject);
         Destroy(_fluidAudioSource.gameObject);
@@ -273,9 +264,6 @@ public class RefuelingTool : OWItem
         }
     }
 
-    void HidePrompt() => _activatePrompt.SetVisibility(false);
-    void ShowPrompt() => _activatePrompt.SetVisibility(true);
-
     public void ActivateTool()
     {
         _oneShotAudioSource.PlayOneShot(ActivateAudio);
@@ -362,4 +350,56 @@ public class RefuelingTool : OWItem
     {
         _submergedResource = null;
     }
+
+    void PromptListeners(bool add)
+    {
+        if(add)
+        {
+            GlobalMessenger.AddListener("GamePaused", HidePrompt);
+            GlobalMessenger.AddListener("GameUnpaused", ShowPrompt);
+            GlobalMessenger.AddListener("EnterMapView", HidePrompt);
+            GlobalMessenger.AddListener("ExitMapView", ShowPrompt);
+            GlobalMessenger<OWRigidbody>.AddListener("EnterFlightConsole", HidePrompt);
+            GlobalMessenger.AddListener("ExitFlightConsole", ShowPrompt);
+            GlobalMessenger.AddListener("EnterConversation", HidePrompt);
+            GlobalMessenger.AddListener("ExitConversation", ShowPrompt);
+            GlobalMessenger.AddListener("StartTravelerConversation", HidePrompt);
+            GlobalMessenger.AddListener("EndTravelerConversation", ShowPrompt);
+            GlobalMessenger.AddListener("EnterNomaiRemoteCamera", HidePrompt);
+            GlobalMessenger.AddListener("ExitNomaiRemoteCamera", ShowPrompt);
+            GlobalMessenger<OWRigidbody>.AddListener("EnterRemoteFlightConsole", HidePrompt);
+            GlobalMessenger.AddListener("ExitRemoteFlightConsole", ShowPrompt);
+            GlobalMessenger<Campfire>.AddListener("EnterRoastingMode", HidePrompt);
+            GlobalMessenger.AddListener("ExitRoastingMode", ShowPrompt);
+            GlobalMessenger<Peephole>.AddListener("StartPeeping", HidePrompt);
+            GlobalMessenger<Peephole>.AddListener("StopPeeping", ShowPrompt);
+        }
+        else
+        {
+            GlobalMessenger.RemoveListener("GamePaused", HidePrompt);
+            GlobalMessenger.RemoveListener("GameUnpaused", ShowPrompt);
+            GlobalMessenger.RemoveListener("EnterMapView", HidePrompt);
+            GlobalMessenger.RemoveListener("ExitMapView", ShowPrompt);
+            GlobalMessenger<OWRigidbody>.RemoveListener("EnterFlightConsole", HidePrompt);
+            GlobalMessenger.RemoveListener("ExitFlightConsole", ShowPrompt);
+            GlobalMessenger.RemoveListener("EnterConversation", HidePrompt);
+            GlobalMessenger.RemoveListener("ExitConversation", ShowPrompt);
+            GlobalMessenger.RemoveListener("StartTravelerConversation", HidePrompt);
+            GlobalMessenger.RemoveListener("EndTravelerConversation", ShowPrompt);
+            GlobalMessenger.RemoveListener("EnterNomaiRemoteCamera", HidePrompt);
+            GlobalMessenger.RemoveListener("ExitNomaiRemoteCamera", ShowPrompt);
+            GlobalMessenger<OWRigidbody>.RemoveListener("EnterRemoteFlightConsole", HidePrompt);
+            GlobalMessenger.RemoveListener("ExitRemoteFlightConsole", ShowPrompt);
+            GlobalMessenger<Campfire>.RemoveListener("EnterRoastingMode", HidePrompt);
+            GlobalMessenger.RemoveListener("ExitRoastingMode", ShowPrompt);
+            GlobalMessenger<Peephole>.RemoveListener("StartPeeping", HidePrompt);
+            GlobalMessenger<Peephole>.RemoveListener("StopPeeping", ShowPrompt);
+        }
+    }
+    void HidePrompt() => _activatePrompt.SetVisibility(false);
+    void HidePrompt(OWRigidbody _) => _activatePrompt.SetVisibility(false);
+    void HidePrompt(Campfire _) => _activatePrompt.SetVisibility(false);
+    void HidePrompt(Peephole _) => _activatePrompt.SetVisibility(false);
+    void ShowPrompt() => _activatePrompt.SetVisibility(true);
+    void ShowPrompt(Peephole _) => _activatePrompt.SetVisibility(true);
 }

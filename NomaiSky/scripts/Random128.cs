@@ -47,9 +47,11 @@ public class Random128
     }
     public int Range(int minInclusive, int maxExclusive) { return NextStream().Range(minInclusive, maxExclusive); }
     public float Range(float minInclusive, float maxExclusive) { return NextStream().Range(minInclusive, maxExclusive); }
+    public float Proba() { return NextStream().Range(0f, 1f); }
     public bool RandomBool() { return NextStream().RandomBool(); }
     public int Range(int minInclusive, int maxExclusive, string parameter) { Start(parameter); return NextStream().Range(minInclusive, maxExclusive); }
     public float Range(float minInclusive, float maxExclusive, string parameter) { Start(parameter); return NextStream().Range(minInclusive, maxExclusive); }
+    public float Proba(string parameter) { Start(parameter); return NextStream().Range(0f, 1f); }
     public bool RandomBool(string parameter) { Start(parameter); return NextStream().RandomBool(); }
     public void Start(string parameter) {
         uint id = 0; int i = 0;
