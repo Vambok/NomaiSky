@@ -1,12 +1,12 @@
 ManifestFileVersion: 0
-CRC: 1535758827
+CRC: 1793069964
 Hashes:
   AssetFileHash:
     serializedVersion: 2
-    Hash: c239266607f3991d7a690e69178fc294
+    Hash: 8fec0d56510d94dbe94cc2b6d5282a23
   TypeTreeHash:
     serializedVersion: 2
-    Hash: c634e54f8c97859f550e94e0744afec2
+    Hash: c67bee037bbb887c01ac3f110d5d30ce
 HashAppended: 0
 ClassTypes:
 - Class: 1
@@ -28,8 +28,6 @@ ClassTypes:
 - Class: 65
   Script: {instanceID: 0}
 - Class: 83
-  Script: {instanceID: 0}
-- Class: 89
   Script: {instanceID: 0}
 - Class: 108
   Script: {instanceID: 0}
@@ -65,6 +63,10 @@ ClassTypes:
   Script: {instanceID: 0}
 SerializeReferenceClassIdentifiers: []
 Assets:
-- Assets/NomaiSky/KeroseneResource.prefab
+- Assets/NomaiSky/KeroseneOcean.prefab
+- Assets/NomaiSky/StrangerFuelOcean.prefab
+- Assets/NomaiSky/MethaneOcean.prefab
 - Assets/NomaiSky/FuelSiphon.prefab
+- Assets/NomaiSky/HydrogenOcean.prefab
+- Assets/NomaiSky/AlcoholOcean.prefab
 Dependencies: []
