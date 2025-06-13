@@ -2,109 +2,97 @@ using System;//
 using System.IO;//
 using UnityEngine;//
 
-static class Heightmaps
-{
-    static float radius;
+static class Heightmaps {
     static readonly int baseRes = 204;// = heightmap height = heightmap width / 2
     //static readonly Stopwatch timer = new();
-    static (int, int, byte) SetVertex(int x, int y, int z, int hmHeight)
-    {
-        int hmWidth = hmHeight * 2;
-        Vector3 v2 = (new Vector3(x, y, z) - Vector3.one * hmHeight / 8f).normalized;
-        float x2 = v2.x * v2.x, y2 = v2.y * v2.y, z2 = v2.z * v2.z;
-        Vector3 v = new(v2.x * Mathf.Sqrt(1f - y2 / 2f - z2 / 2f + y2 * z2 / 3f), v2.y * Mathf.Sqrt(1f - x2 / 2f - z2 / 2f + x2 * z2 / 3f), v2.z * Mathf.Sqrt(1f - x2 / 2f - y2 / 2f + x2 * y2 / 3f));
-        float dist = Mathf.Sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
-        float longitude = Mathf.Rad2Deg * Mathf.Atan2(v.z, v.x);
-        float latitude = Mathf.Rad2Deg * Mathf.Acos(-v.y / dist);
-        float sampleX = hmWidth * longitude / 360f;
-        if (sampleX > hmWidth) sampleX -= hmWidth;
-        if (sampleX < 0) sampleX += hmWidth;
-        return ((int)sampleX, (int)(hmHeight * latitude / 180f), HeightGenerator(v.normalized * radius));
+
+    static readonly Vector3[,] sampleSet = new Vector3[baseRes * 2,baseRes];
+    public static void Init() {
+        //LOD1 (lvl2):
+        int resolution = baseRes / 8;
+        for(int x = 0;x <= resolution;x++) {
+            for(int y = 0;y <= resolution;y++) {
+                SetVertex(x, y, 0);
+                SetVertex(x, y, resolution);
+            }
+        }
+        for(int x = 1;x < resolution;x++) {
+            for(int y = 0;y <= resolution;y++) {
+                SetVertex(0, y, x);
+                SetVertex(resolution, y, x);
+            }
+        }
+        for(int x = 1;x < resolution;x++) {
+            for(int y = 1;y < resolution;y++) {
+                SetVertex(x, 0, y);
+                SetVertex(x, resolution, y);
+            }
+        }
+        //LOD0 (lvl1): (better vector from LOD0 overwrites LOD1 when same spot)
+        resolution = baseRes / 4;
+        for(int x = 0;x <= resolution;x++) {
+            for(int y = 0;y <= resolution;y++) {
+                SetVertex(x, y, 0);
+                SetVertex(x, y, resolution);
+            }
+        }
+        for(int x = 1;x < resolution;x++) {
+            for(int y = 0;y <= resolution;y++) {
+                SetVertex(0, y, x);
+                SetVertex(resolution, y, x);
+            }
+        }
+        for(int x = 1;x < resolution;x++) {
+            for(int y = 1;y < resolution;y++) {
+                SetVertex(x, 0, y);
+                SetVertex(x, resolution, y);
+            }
+        }
+        void SetVertex(int x, int y, int z) {
+            Vector3 v2 = (new Vector3(x, y, z) - Vector3.one * resolution / 2f).normalized;
+            float x2 = v2.x * v2.x, y2 = v2.y * v2.y, z2 = v2.z * v2.z;
+            Vector3 v = new(v2.x * Mathf.Sqrt(1f - y2 / 2f - z2 / 2f + y2 * z2 / 3f), v2.y * Mathf.Sqrt(1f - x2 / 2f - z2 / 2f + x2 * z2 / 3f), v2.z * Mathf.Sqrt(1f - x2 / 2f - y2 / 2f + x2 * y2 / 3f));
+            float dist = Mathf.Sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+            float longitude = Mathf.Rad2Deg * Mathf.Atan2(v.z, v.x);
+            float latitude = Mathf.Rad2Deg * Mathf.Acos(-v.y / dist);
+            int hmWidth = baseRes * 2;
+            float sampleX = hmWidth * longitude / 360f;
+            if(sampleX > hmWidth) sampleX -= hmWidth;
+            if(sampleX < 0) sampleX += hmWidth;
+            sampleSet[(int)sampleX, (int)(baseRes * latitude / 180f)] = v.normalized;
+        }
     }
 
-    public static void CreateHeightmap(string path, float planetRadius, Color32 color, string parameter = "")
-    {
-        radius = planetRadius / 10;//tweak this till frequences are great
-        int hmWidth = baseRes * 2;
-        int resolution = baseRes / 4;
-        Texture2D tex = new(hmWidth, baseRes, TextureFormat.RGBA32, false);
-        int tX, tY; byte hValue;
-        byte[] data = new byte[baseRes * hmWidth];
-        Array.Fill<byte>(data, 100);
-
+    public static void CreateHeightmap(string path, float planetRadius, Color32 color, out float lowestPoint, out float highestPoint, string parameter = "") {
         //timer.Reset(); //TEST
         //Random128.Initialize(1, 5463, 64875, 215);for(int jj = 0;jj < 10;jj++) { //TEST
         if(parameter != "") NomaiSky.Random128.Rng.Start(parameter);
         perm = NomaiSky.Random128.Rng.GeneratePermutations();
 
-        for (int x = 0; x <= resolution; x++)
-        {
-            for (int y = 0; y <= resolution; y++)
-            {
-                (tX, tY, hValue) = SetVertex(x, y, 0, baseRes);
-                data[tX + tY * hmWidth] = hValue;
-                (tX, tY, hValue) = SetVertex(x, y, resolution, baseRes);
-                data[tX + tY * hmWidth] = hValue;
-            }
-        }
-        for (int x = 1; x < resolution; x++)
-        {
-            for (int y = 0; y <= resolution; y++)
-            {
-                (tX, tY, hValue) = SetVertex(0, y, x, baseRes);
-                data[tX + tY * hmWidth] = hValue;
-                (tX, tY, hValue) = SetVertex(resolution, y, x, baseRes);
-                data[tX + tY * hmWidth] = hValue;
-            }
-        }
-        for (int x = 1; x < resolution; x++)
-        {
-            for (int y = 1; y < resolution; y++)
-            {
-                (tX, tY, hValue) = SetVertex(x, 0, y, baseRes);
-                data[tX + tY * hmWidth] = hValue;
-                (tX, tY, hValue) = SetVertex(x, resolution, y, baseRes);
-                data[tX + tY * hmWidth] = hValue;
-            }
-        }
-        /*resolution /= 2;
-        for(int x = 0;x <= resolution;x++) {
-            for(int y = 0;y <= resolution;y++) {
-                (tX, tY, hValue) = SetVertex(x, y, 0, baseRes / 2);
-                data[tX * 2 + tY * 2 * hmWidth] = hValue;
-                (tX, tY, hValue) = SetVertex(x, y, resolution, baseRes / 2);
-                data[tX * 2 + tY * 2 * hmWidth] = hValue;
-            }
-        }
-        for(int x = 1;x < resolution;x++) {
-            for(int y = 0;y <= resolution;y++) {
-                (tX, tY, hValue) = SetVertex(0, y, x, baseRes / 2);
-                data[tX * 2 + tY * 2 * hmWidth] = hValue;
-                (tX, tY, hValue) = SetVertex(resolution, y, x, baseRes / 2);
-                data[tX * 2 + tY * 2 * hmWidth] = hValue;
-            }
-        }
-        for(int x = 1;x < resolution;x++) {
-            for(int y = 1;y < resolution;y++) {
-                (tX, tY, hValue) = SetVertex(x, 0, y, baseRes / 2);
-                data[tX * 2 + tY * 2 * hmWidth] = hValue;
-                (tX, tY, hValue) = SetVertex(x, resolution, y, baseRes / 2);
-                data[tX * 2 + tY * 2 * hmWidth] = hValue;
-            }
-        }//*/
+        int hmWidth = baseRes * 2;
+        Texture2D tex = new(hmWidth, baseRes, TextureFormat.RGBA32, false);
         byte[] dataTex = new byte[baseRes * hmWidth * 4];
         byte[] finalData = new byte[baseRes * hmWidth * 4];
-        for (int i = 0; i < baseRes * hmWidth; i++)
-        {
-            finalData[i * 4] = data[i];
-            finalData[i * 4 + 1] = data[i];
-            finalData[i * 4 + 2] = data[i];
-            finalData[i * 4 + 3] = 255;
-            dataTex[i * 4 + 0] = color.r;
-            dataTex[i * 4 + 1] = color.g;
-            dataTex[i * 4 + 2] = color.b;
-            dataTex[i * 4 + 3] = 255;
+        byte currentByte = 100;
+        byte lowestByte = 255;
+        byte highestByte = 0;
+        for(int j = 0;j < baseRes;j++) {
+            for(int i = 0;i < hmWidth;i++) {
+                if(sampleSet[i, j] != Vector3.zero) currentByte = HeightGenerator(sampleSet[i, j] * planetRadius / 10/*tweak this factor till frequences are great*/);
+                finalData[(i + j * hmWidth) * 4] = currentByte;
+                finalData[(i + j * hmWidth) * 4 + 1] = currentByte;
+                finalData[(i + j * hmWidth) * 4 + 2] = currentByte;
+                finalData[(i + j * hmWidth) * 4 + 3] = 255;
+                dataTex[(i + j * hmWidth) * 4] = color.r;//(byte)((color.r + data[i]) / 2);
+                dataTex[(i + j * hmWidth) * 4 + 1] = color.g;//(byte)((color.g + data[i]) / 2);
+                dataTex[(i + j * hmWidth) * 4 + 2] = color.b;//(byte)((color.b + data[i]) / 2);
+                dataTex[(i + j * hmWidth) * 4 + 3] = 255;
+                if(currentByte < lowestByte) lowestByte = currentByte;
+                if(currentByte > highestByte) highestByte = currentByte;
+            }
         }
+        lowestPoint = lowestByte / 255f;
+        highestPoint = highestByte / 255f;
         tex.SetPixelData(finalData, 0);
         tex.Apply();
         File.WriteAllBytes(path + "heightmap.png", ImageConversion.EncodeToPNG(tex));
@@ -116,8 +104,8 @@ static class Heightmaps
         UnityEngine.Object.Destroy(tex);
         //return timer.ElapsedTicks + " (" + timer.ElapsedMilliseconds + "ms)"; //TEST
     }
-    static byte HeightGenerator(Vector3 position)
-    {
+
+    static byte HeightGenerator(Vector3 position) {
         float result, clamp;
         //timer.Start(); //TEST
         result = Noise("large_details", position, -200, 300);
@@ -127,11 +115,9 @@ static class Heightmaps
         //timer.Stop(); //TEST
         return (byte)((result + 1700) * 256 / 4475);//(result - sumLows) * 256 / (sumHighs - sumLows)
     }
-    static float Clamp(string type, Vector3 position)
-    {
+    static float Clamp(string type, Vector3 position) {
         float result;
-        switch (type)
-        {
+        switch (type) {
             case "cubed_mountains":
                 result = Noise(position, 7, 0.002f, 0.7f);
                 return Mathf.Clamp01(result * result * result * 13);
@@ -142,11 +128,9 @@ static class Heightmaps
                 return 0;
         }
     }
-    static float Noise(string type, Vector3 position, int low, int high)
-    {
+    static float Noise(string type, Vector3 position, int low, int high) {
         float result;
-        switch (type)
-        {
+        switch (type) {
             case "large_details":
                 result = Noise(position, 8, 0.003f, 0.8f);
                 break;
@@ -172,19 +156,16 @@ static class Heightmaps
         }
         return (result * (high - low) + high + low) / 2;
     }
-    static float Noise(Vector3 position, int octaves, float frequency, float persistence, string type = null)
-    {
+    static float Noise(Vector3 position, int octaves, float frequency, float persistence, string type = null) {
         float total = 0;
         float maxAmplitude = 0;
         float amplitude = 1;
-        Func<float, float> NoiseFuction = type switch
-        {
+        Func<float, float> NoiseFuction = type switch {
             "Cellular_Squared" => frq => CellularSquared(position * frq),
             "Ridged_Snoise" => frq => 1 - 2 * Mathf.Abs(Snoise(position * frq)),
             _ => frq => Snoise(position * frq)
         };
-        for (int i = 0; i < octaves; i++)
-        {
+        for (int i = 0; i < octaves; i++) {
             total += NoiseFuction(frequency) * amplitude;
             frequency *= 2;
             maxAmplitude += amplitude;
@@ -220,16 +201,14 @@ static class Heightmaps
      * the noise values need to be scaled and offset to [0,1], like this:
      * float SLnoise = (Snoise(x,y,z) + 1.0) * 0.5;*/
     /// <summary>Gradients-dot-residualvectors 3D.</summary>
-    static float Grad(int hash, float x, float y, float z)
-    {
+    static float Grad(int hash, float x, float y, float z) {
         int h = hash & 15;     // Convert low 4 bits of hash code into 12 simple
         float u = h < 8 ? x : y; // gradient directions, and compute dot product.
         float v = h < 4 ? y : h == 12 || h == 14 ? x : z; // Fix repeats at h = 12 to 15
         return ((h & 1) > 0 ? -u : u) + ((h & 2) > 0 ? -v : v);
     }
     /// <summary>3D simplex noise.</summary>
-    static float Snoise(Vector3 P)
-    {
+    static float Snoise(Vector3 P) {
         // Simple skewing factors for the 3D case
         const float F3 = 0.333333333f;
         const float G3 = 0.166666667f;
@@ -254,14 +233,11 @@ static class Heightmaps
         int i1, j1, k1; // Offsets for second corner of simplex in (i,j,k) coords
         int i2, j2, k2; // Offsets for third corner of simplex in (i,j,k) coords
         // This code would benefit from a backport from the GLSL version!
-        if (x0 >= y0)
-        {
+        if (x0 >= y0) {
             if (y0 >= z0) { i1 = 1; j1 = 0; k1 = 0; i2 = 1; j2 = 1; k2 = 0; } // X Y Z order
             else if (x0 >= z0) { i1 = 1; j1 = 0; k1 = 0; i2 = 1; j2 = 0; k2 = 1; } // X Z Y order
             else { i1 = 0; j1 = 0; k1 = 1; i2 = 1; j2 = 0; k2 = 1; } // Z X Y order
-        }
-        else
-        { // x0<y0
+        } else { // x0<y0
             if (y0 < z0) { i1 = 0; j1 = 0; k1 = 1; i2 = 0; j2 = 1; k2 = 1; } // Z Y X order
             else if (x0 < z0) { i1 = 0; j1 = 1; k1 = 0; i2 = 0; j2 = 1; k2 = 1; } // Y Z X order
             else { i1 = 0; j1 = 1; k1 = 0; i2 = 1; j2 = 1; k2 = 0; } // Y X Z order
@@ -285,29 +261,25 @@ static class Heightmaps
         // Calculate the contribution from the four corners
         float t0 = 0.6f - x0 * x0 - y0 * y0 - z0 * z0;
         if (t0 < 0) n0 = 0;
-        else
-        {
+        else {
             t0 *= t0;
             n0 = t0 * t0 * Grad(perm[ii + perm[jj + perm[kk]]], x0, y0, z0);
         }
         float t1 = 0.6f - x1 * x1 - y1 * y1 - z1 * z1;
         if (t1 < 0) n1 = 0;
-        else
-        {
+        else {
             t1 *= t1;
             n1 = t1 * t1 * Grad(perm[ii + i1 + perm[jj + j1 + perm[kk + k1]]], x1, y1, z1);
         }
         float t2 = 0.6f - x2 * x2 - y2 * y2 - z2 * z2;
         if (t2 < 0) n2 = 0;
-        else
-        {
+        else {
             t2 *= t2;
             n2 = t2 * t2 * Grad(perm[ii + i2 + perm[jj + j2 + perm[kk + k2]]], x2, y2, z2);
         }
         float t3 = 0.6f - x3 * x3 - y3 * y3 - z3 * z3;
         if (t3 < 0) n3 = 0;
-        else
-        {
+        else {
             t3 *= t3;
             n3 = t3 * t3 * Grad(perm[ii + 1 + perm[jj + 1 + perm[kk + 1]]], x3, y3, z3);
         }
@@ -316,16 +288,14 @@ static class Heightmaps
         return 32 * (n0 + n1 + n2 + n3); // TODO: The scale factor is preliminary!
     }
 
-    static float CellularSquared(Vector3 P)
-    {
+    static float CellularSquared(Vector3 P) {
         Vector2 tmp = NewCellular(P);
         tmp.y -= tmp.x;
         return tmp.y * tmp.y;
     }
     /// <summary>Vector floor to int, component-wise.</summary>
     static Vector3Int FloorToInt(Vector3 a) => new(Mathf.FloorToInt(a.x), Mathf.FloorToInt(a.y), Mathf.FloorToInt(a.z));
-    static Vector3 GetCellJitter(Vector3Int coord)
-    {
+    static Vector3 GetCellJitter(Vector3Int coord) {
         // Create 3 separate hashes to avoid repeated values across axes
         return new Vector3(
             perm[(coord.x + perm[(coord.y + perm[coord.z & 255]) & 255]) & 255] / 256f - 0.5f,
@@ -333,26 +303,19 @@ static class Heightmaps
             perm[(coord.x + 131 + perm[(coord.y + 251 + perm[(coord.z + 7) & 255]) & 255]) & 255] / 256f - 0.5f
         );
     }
-    static Vector2 NewCellular(Vector3 P)
-    {
+    static Vector2 NewCellular(Vector3 P) {
         float F1 = float.MaxValue, F2 = float.MaxValue;
         Vector3Int Pi = FloorToInt(P);
         Vector3 Pf = P - Pi;
 
-        for (int dz = -1; dz <= 1; dz++)
-        {
-            for (int dy = -1; dy <= 1; dy++)
-            {
-                for (int dx = -1; dx <= 1; dx++)
-                {
+        for (int dz = -1; dz <= 1; dz++) {
+            for (int dy = -1; dy <= 1; dy++) {
+                for (int dx = -1; dx <= 1; dx++) {
                     float diff = (Pf - GetCellJitter(new Vector3Int(Pi.x + dx, Pi.y + dy, Pi.z + dz)) - new Vector3(dx, dy, dz)).sqrMagnitude;
-                    if (diff < F1)
-                    {
+                    if (diff < F1) {
                         F2 = F1;
                         F1 = diff;
-                    }
-                    else if (diff < F2)
-                    {
+                    } else if (diff < F2) {
                         F2 = diff;
                     }
                 }
@@ -485,4 +448,89 @@ static class Heightmaps
         timer.Stop();
         return new Vector2(Mathf.Sqrt(dx11.x), Mathf.Sqrt(dx11.y)); // F1, F2
     }//*/
+
+    /*// Old HM gen:
+    static (int, int, byte) SetVertex(int x, int y, int z, int hmHeight) {
+        int hmWidth = hmHeight * 2;
+        Vector3 v2 = (new Vector3(x, y, z) - Vector3.one * hmHeight / 8f).normalized;
+        float x2 = v2.x * v2.x, y2 = v2.y * v2.y, z2 = v2.z * v2.z;
+        Vector3 v = new(v2.x * Mathf.Sqrt(1f - y2 / 2f - z2 / 2f + y2 * z2 / 3f), v2.y * Mathf.Sqrt(1f - x2 / 2f - z2 / 2f + x2 * z2 / 3f), v2.z * Mathf.Sqrt(1f - x2 / 2f - y2 / 2f + x2 * y2 / 3f));
+        float dist = Mathf.Sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+        float longitude = Mathf.Rad2Deg * Mathf.Atan2(v.z, v.x);
+        float latitude = Mathf.Rad2Deg * Mathf.Acos(-v.y / dist);
+        float fsampleX = hmWidth * longitude / 360f;
+        int sampleY = (int)(hmHeight * latitude / 180f);
+        if(fsampleX > hmWidth) fsampleX -= hmWidth;
+        if(fsampleX < 0) fsampleX += hmWidth;
+        int sampleX = (int)fsampleX;
+        return (sampleX, sampleY, HeightGenerator(v.normalized * radius));
+    }
+
+    public static void CreateHeightmap(string path, float planetRadius, Color32 color, out float lowestPoint, out float highestPoint, string parameter = "") {
+        radius = planetRadius / 10;//tweak this till frequences are great
+        int hmWidth = baseRes * 2;
+        int resolution = baseRes / 4;
+        Texture2D tex = new(hmWidth, baseRes, TextureFormat.RGBA32, false);
+        int tX, tY; byte hValue;
+        byte[] data = new byte[baseRes * hmWidth];
+        Array.Fill<byte>(data, 100);
+
+        //timer.Reset(); //TEST
+        //Random128.Initialize(1, 5463, 64875, 215);for(int jj = 0;jj < 10;jj++) { //TEST
+        if(parameter != "") NomaiSky.Random128.Rng.Start(parameter);
+        perm = NomaiSky.Random128.Rng.GeneratePermutations();
+
+        for(int x = 0;x <= resolution;x++) {
+            for(int y = 0;y <= resolution;y++) {
+                (tX, tY, hValue) = SetVertex(x, y, 0, baseRes);
+                data[tX + tY * hmWidth] = hValue;
+                (tX, tY, hValue) = SetVertex(x, y, resolution, baseRes);
+                data[tX + tY * hmWidth] = hValue;
+            }
+        }
+        for(int x = 1;x < resolution;x++) {
+            for(int y = 0;y <= resolution;y++) {
+                (tX, tY, hValue) = SetVertex(0, y, x, baseRes);
+                data[tX + tY * hmWidth] = hValue;
+                (tX, tY, hValue) = SetVertex(resolution, y, x, baseRes);
+                data[tX + tY * hmWidth] = hValue;
+            }
+        }
+        for(int x = 1;x < resolution;x++) {
+            for(int y = 1;y < resolution;y++) {
+                (tX, tY, hValue) = SetVertex(x, 0, y, baseRes);
+                data[tX + tY * hmWidth] = hValue;
+                (tX, tY, hValue) = SetVertex(x, resolution, y, baseRes);
+                data[tX + tY * hmWidth] = hValue;
+            }
+        }
+        byte[] dataTex = new byte[baseRes * hmWidth * 4];
+        byte[] finalData = new byte[baseRes * hmWidth * 4];
+        byte lowestByte = 255;
+        byte highestByte = 0;
+        for (int i = 0; i < baseRes * hmWidth; i++) {
+            finalData[i * 4] = data[i];
+            finalData[i * 4 + 1] = data[i];
+            finalData[i * 4 + 2] = data[i];
+            finalData[i * 4 + 3] = 255;
+            dataTex[i * 4] = color.r;//(byte)((color.r + data[i]) / 2);
+            dataTex[i * 4 + 1] = color.g;//(byte)((color.g + data[i]) / 2);
+            dataTex[i * 4 + 2] = color.b;//(byte)((color.b + data[i]) / 2);
+            dataTex[i * 4 + 3] = 255;
+            if(data[i] < lowestByte) lowestByte = data[i];
+            if(data[i] > highestByte) highestByte = data[i];
+        }
+        lowestPoint = lowestByte / 255f;
+        highestPoint = highestByte / 255f;
+        tex.SetPixelData(finalData, 0);
+        tex.Apply();
+        File.WriteAllBytes(path + "heightmap.png", ImageConversion.EncodeToPNG(tex));
+        //Create texture too:
+        tex.SetPixelData(dataTex, 0);
+        tex.Apply();
+        File.WriteAllBytes(path + "texture.png", ImageConversion.EncodeToPNG(tex));
+        //File.WriteAllBytes(path + "0-" + jj + ".png", ImageConversion.EncodeToPNG(tex));} //TEST
+        UnityEngine.Object.Destroy(tex);
+        //return timer.ElapsedTicks + " (" + timer.ElapsedMilliseconds + "ms)"; //TEST
+    }*/
 }

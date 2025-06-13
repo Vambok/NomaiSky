@@ -48,7 +48,7 @@ public class RefuelingResource : MonoBehaviour
 
     private void OnExit(GameObject other)
     {
-        if (other.GetAttachedOWRigidbody().CompareTag("Player"))
+        if (other.GetAttachedOWRigidbody() != null && other.GetAttachedOWRigidbody().CompareTag("Player"))
         {
             RefuelingTool.Instance.UnsubmergeInResource();
         }

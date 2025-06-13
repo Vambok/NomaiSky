@@ -2,7 +2,6 @@ using HarmonyLib;//
 using NewHorizons.OtherMods.CustomShipLogModes;//
 using System;//
 using System.Collections.Generic;//
-using UnityEngine;
 using static System.Reflection.Emit.OpCodes;//
 
 namespace NomaiSky;

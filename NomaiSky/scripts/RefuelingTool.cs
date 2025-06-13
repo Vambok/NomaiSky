@@ -1,6 +1,5 @@
 using NewHorizons;
 using NewHorizons.Handlers;
-using Steamworks;
 using UnityEngine;
 
 namespace NomaiSky;
@@ -12,6 +11,7 @@ public class RefuelingTool : OWItem
 
     public IInputCommands ActivateKey = InputLibrary.toolActionPrimary;
     private ScreenPrompt _activatePrompt;
+    bool atRemoteFlightConsole = false, inRoastingMode = false;
 
     private bool _toolActive;
     private bool _fillingFuel;
@@ -56,7 +56,7 @@ public class RefuelingTool : OWItem
         Instance = this;
         _type = ItemType.VisionTorch;
 
-        PromptListeners(true);
+        Listeners(true);
         base.Awake();
     }
 
@@ -115,7 +115,7 @@ public class RefuelingTool : OWItem
 
     public override void OnDestroy()
     {
-        PromptListeners(false);
+        Listeners(false);
         base.OnDestroy();
         Destroy(_vacuumAudioSource.gameObject);
         Destroy(_fluidAudioSource.gameObject);
@@ -176,50 +176,55 @@ public class RefuelingTool : OWItem
                 DeactivateTool();
             }
         }
+
+        if(PlayerState.UsingShipComputer() || PlayerState.IsViewingProjector() || OWTime.IsPaused() || PlayerState.InMapView() || PlayerState.AtFlightConsole() || PlayerState.InConversation() || PlayerState.UsingNomaiRemoteCamera() || PlayerState.IsPeeping() || atRemoteFlightConsole || inRoastingMode)
+            _activatePrompt.SetVisibility(false);
+        else
+            _activatePrompt.SetVisibility(true);
     }
 
     public void FixedUpdate()
     {
-        if (_toolActive)
+        RefuelingResource resource = _submergedResource;
+        if(_activatePrompt.IsVisible())
+        {
+            if(resource == null)
+            {
+                Transform aim = Locator.GetToolModeSwapper()._firstPersonManipulator.transform;
+                if(Physics.Raycast(aim.position, aim.forward, out RaycastHit hitInfo, Range, OWLayerMask.effectVolumeMask))
+                {
+                    resource = hitInfo.collider.GetComponent<RefuelingResource>();
+                }
+            }
+            if(resource != null)
+                _activatePrompt.SetText(TranslationHandler.GetTranslation("RefuelingTool_Prompt", TranslationHandler.TextType.UI) + " " + resource.Name + "   <CMD>");
+            else
+                _activatePrompt.SetText(TranslationHandler.GetTranslation("RefuelingTool_Prompt", TranslationHandler.TextType.UI) + "   <CMD>");
+        }
+        if(_toolActive)
         {
             float fuel = _shipResources.GetFractionalFuel();
 
-            if (fuel < 1)
+            if(fuel < 1)
             {
-                if (_submergedResource != null && !_fillingFuel)
+                if(resource == null)
                 {
-                    StartRefueling(_submergedResource);
+                    StopRefueling();
                 }
-                else
+                else if(_currentResource != resource)
                 {
-                    Transform aim = Locator.GetToolModeSwapper()._firstPersonManipulator.transform;
-                    if (Physics.Raycast(aim.position, aim.forward, out RaycastHit hitInfo, Range, OWLayerMask.effectVolumeMask))
-                    {
-                        RefuelingResource resource = hitInfo.collider.GetComponent<RefuelingResource>();
-                        if (resource == null)
-                        {
-                            StopRefueling();
-                        }
-                        else if (_currentResource != resource)
-                        {
-                            StartRefueling(resource);
-                        }
-                    }
-                    else
-                    {
-                        StopRefueling();
-                    }
+                    StartRefueling(resource);
                 }
             }
 
-            if (_fillingFuel)
+            if(_fillingFuel)
             {
-                if (_blinkTimer == 0)
+                if(_blinkTimer == 0)
                 {
                     _blinkTimer = BlinkTime * 2;
                 }
 
-                if (fuel == 1)
+                if(fuel == 1)
                 {
                     StopRefueling();
                     SetIndicator(IndicatorFullColor);
@@ -229,7 +234,7 @@ public class RefuelingTool : OWItem
                 {
                     SetIndicator(IndicatorFillingColor);
 
-                    if (_currentResource.Amount > 0)
+                    if(_currentResource.Amount > 0)
                     {
                         _shipResources.AddFuel(Speed * _currentResource.Efficiency * Time.fixedDeltaTime);
                     }
@@ -238,13 +243,13 @@ public class RefuelingTool : OWItem
                         StopRefueling();
                     }
 
-                    if (_currentResource.IsDrainable)
+                    if(_currentResource.IsDrainable)
                     {
                         _currentResource.Drain(Speed * Time.fixedDeltaTime);
                     }
                 }
             }
-            else if (fuel < 1)
+            else if(fuel < 1)
             {
                 SetIndicator(IndicatorIdleColor);
             }
@@ -253,9 +258,9 @@ public class RefuelingTool : OWItem
                 SetIndicator(IndicatorFullColor);
             }
 
-            if (_blinkTimer != 0)
+            if(_blinkTimer != 0)
             {
-                if (_blinkTimer > BlinkTime)
+                if(_blinkTimer > BlinkTime)
                 {
                     SetIndicator(Color.black);
                 }
@@ -351,55 +356,29 @@ public class RefuelingTool : OWItem
         _submergedResource = null;
     }
 
-    void PromptListeners(bool add)
+    void Listeners(bool add)
     {
         if(add)
         {
-            GlobalMessenger.AddListener("GamePaused", HidePrompt);
-            GlobalMessenger.AddListener("GameUnpaused", ShowPrompt);
-            GlobalMessenger.AddListener("EnterMapView", HidePrompt);
-            GlobalMessenger.AddListener("ExitMapView", ShowPrompt);
-            GlobalMessenger<OWRigidbody>.AddListener("EnterFlightConsole", HidePrompt);
-            GlobalMessenger.AddListener("ExitFlightConsole", ShowPrompt);
-            GlobalMessenger.AddListener("EnterConversation", HidePrompt);
-            GlobalMessenger.AddListener("ExitConversation", ShowPrompt);
-            GlobalMessenger.AddListener("StartTravelerConversation", HidePrompt);
-            GlobalMessenger.AddListener("EndTravelerConversation", ShowPrompt);
-            GlobalMessenger.AddListener("EnterNomaiRemoteCamera", HidePrompt);
-            GlobalMessenger.AddListener("ExitNomaiRemoteCamera", ShowPrompt);
             GlobalMessenger<OWRigidbody>.AddListener("EnterRemoteFlightConsole", HidePrompt);
-            GlobalMessenger.AddListener("ExitRemoteFlightConsole", ShowPrompt);
+            GlobalMessenger.AddListener("ExitRemoteFlightConsole", ShowPromptRFC);
             GlobalMessenger<Campfire>.AddListener("EnterRoastingMode", HidePrompt);
-            GlobalMessenger.AddListener("ExitRoastingMode", ShowPrompt);
-            GlobalMessenger<Peephole>.AddListener("StartPeeping", HidePrompt);
-            GlobalMessenger<Peephole>.AddListener("StopPeeping", ShowPrompt);
+            GlobalMessenger.AddListener("ExitRoastingMode", ShowPromptRM);
+            GlobalMessenger.AddListener("ExitMapView", StopDaParticlesDamnit);
         }
         else
         {
-            GlobalMessenger.RemoveListener("GamePaused", HidePrompt);
-            GlobalMessenger.RemoveListener("GameUnpaused", ShowPrompt);
-            GlobalMessenger.RemoveListener("EnterMapView", HidePrompt);
-            GlobalMessenger.RemoveListener("ExitMapView", ShowPrompt);
-            GlobalMessenger<OWRigidbody>.RemoveListener("EnterFlightConsole", HidePrompt);
-            GlobalMessenger.RemoveListener("ExitFlightConsole", ShowPrompt);
-            GlobalMessenger.RemoveListener("EnterConversation", HidePrompt);
-            GlobalMessenger.RemoveListener("ExitConversation", ShowPrompt);
-            GlobalMessenger.RemoveListener("StartTravelerConversation", HidePrompt);
-            GlobalMessenger.RemoveListener("EndTravelerConversation", ShowPrompt);
-            GlobalMessenger.RemoveListener("EnterNomaiRemoteCamera", HidePrompt);
-            GlobalMessenger.RemoveListener("ExitNomaiRemoteCamera", ShowPrompt);
             GlobalMessenger<OWRigidbody>.RemoveListener("EnterRemoteFlightConsole", HidePrompt);
-            GlobalMessenger.RemoveListener("ExitRemoteFlightConsole", ShowPrompt);
+            GlobalMessenger.RemoveListener("ExitRemoteFlightConsole", ShowPromptRFC);
             GlobalMessenger<Campfire>.RemoveListener("EnterRoastingMode", HidePrompt);
-            GlobalMessenger.RemoveListener("ExitRoastingMode", ShowPrompt);
-            GlobalMessenger<Peephole>.RemoveListener("StartPeeping", HidePrompt);
-            GlobalMessenger<Peephole>.RemoveListener("StopPeeping", ShowPrompt);
+            GlobalMessenger.RemoveListener("ExitRoastingMode", ShowPromptRM);
+            GlobalMessenger.RemoveListener("ExitMapView", StopDaParticlesDamnit);
         }
     }
-    void HidePrompt() => _activatePrompt.SetVisibility(false);
-    void HidePrompt(OWRigidbody _) => _activatePrompt.SetVisibility(false);
-    void HidePrompt(Campfire _) => _activatePrompt.SetVisibility(false);
-    void HidePrompt(Peephole _) => _activatePrompt.SetVisibility(false);
-    void ShowPrompt() => _activatePrompt.SetVisibility(true);
-    void ShowPrompt(Peephole _) => _activatePrompt.SetVisibility(true);
+    public ScreenPrompt GetPrompt() => _activatePrompt;
+    void HidePrompt(OWRigidbody _) => atRemoteFlightConsole = true;
+    void HidePrompt(Campfire _) => inRoastingMode = true;
+    void ShowPromptRFC() => atRemoteFlightConsole = false;
+    void ShowPromptRM() => inRoastingMode = false;
+    void StopDaParticlesDamnit() => NomaiSky.Instance.ModHelper.Events.Unity.FireInNUpdates(Particles.Stop, 1);
 }

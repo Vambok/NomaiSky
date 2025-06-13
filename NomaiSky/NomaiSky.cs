@@ -19,8 +19,8 @@ public class NomaiSky : ModBehaviour {
         maxMoonSqrtRadius = 14,
         maxPlanets = 8,
         maxMoons = 5;
-    const float tidalLockProba = 0.25f,
-        waterProba = 0.2f,
+    const float tidalLockProba = 0.2f,
+        waterProba = 0.1f,
         oxygenProbaIfWater = 0.75f,
         oxygenProbaNoWater = 0.5f,
         treeProbaIfOxygen = 0.5f,
@@ -36,7 +36,11 @@ public class NomaiSky : ModBehaviour {
         //
         ringsProba = 0.1f,
         ringAvgInnerRadius = 2, //Never less than 1.25! (relative to body radius)
-        ringAvgOuterRadius = 3; //>ringAvgInnerRadius! (relative to body radius)
+        ringAvgOuterRadius = 3, //>ringAvgInnerRadius! (relative to body radius)
+        fuelMethaneProba = 0.25f,
+        fuelAlcoholProba = 0.25f,
+        fuelHydrogenProba = 0.1f,
+        fuelStrangerProba = 0.05f; //If neither fuel will be Kerosene
     ///<summary>How many more bodies could fit in an orbit span with maxBodies (>0 to prevent constant spacing when maxBodies is hit)</summary>
     const int orbitalMargin = 1;
     ///<summary>A rare prop is this many times more likely to spawn on the planet than on each of its moons</summary>
@@ -113,10 +117,12 @@ public class NomaiSky : ModBehaviour {
         //Harmony
         new Harmony("Vambok.NomaiSky").PatchAll(System.Reflection.Assembly.GetExecutingAssembly());
         //Initializations
-        //  DLC?
+        //  DLC
         hasDLC = EntitlementsManager.IsDlcOwned() == EntitlementsManager.AsyncOwnershipStatus.Owned;
         //  Procedural generation:
-        rareProps.Add((1, 1, false, "{\"path\": \"" + (hasDLC ? "RingWorld_Body/Sector_RingInterior/Sector_Zone2/Structures_Zone2/EyeTempleRuins_Zone2/Interactables_EyeTempleRuins_Zone2/Prefab_IP_FuelTorch (1)\"" : "CaveTwin_Body/Sector_CaveTwin/Sector_NorthHemisphere/Sector_NorthSurface/Sector_Lakebed/Interactables_Lakebed/Prefab_HEA_FuelTank\", \"rotation\": {\"x\": 30, \"y\": 0, \"z\": 270}") + ", \"count\": 1}"));
+        Heightmaps.Init();
+        rareProps.Add((1, 1, false, "fuel"));//Must be first prop
+        //rareProps.Add((1, 1, false, "{\"path\": \"" + (hasDLC ? "RingWorld_Body/Sector_RingInterior/Sector_Zone2/Structures_Zone2/EyeTempleRuins_Zone2/Interactables_EyeTempleRuins_Zone2/Prefab_IP_FuelTorch (1)\"" : "CaveTwin_Body/Sector_CaveTwin/Sector_NorthHemisphere/Sector_NorthSurface/Sector_Lakebed/Interactables_Lakebed/Prefab_HEA_FuelTank\", \"rotation\": {\"x\": 30, \"y\": 0, \"z\": 270}") + ", \"count\": 1}"));
         //  Known systems:
         string knownSystemsFile = Path.Combine(ModHelper.Manifest.ModFolderPath, "systems", "visitedSystems.txt");
         if(!File.Exists(knownSystemsFile)) File.WriteAllText(knownSystemsFile, "(0, 0, 0)" + Environment.NewLine);
@@ -228,14 +234,14 @@ public class NomaiSky : ModBehaviour {
         ModHelper.Events.Unity.RunWhen(PlayerData.IsLoaded, InitSolarSystem);
         //  Spawn into it:
         NewHorizons.GetStarSystemLoadedEvent().AddListener(SpawnIntoSystem);
-        //OnCompleteSceneLoad(OWScene.TitleScreen, OWScene.TitleScreen); // We start on title screen
+        OnCompleteSceneLoad(OWScene.TitleScreen, OWScene.TitleScreen); // We start on title screen
         LoadManager.OnStartSceneLoad += OnStartSceneLoad;
         LoadManager.OnCompleteSceneLoad += OnCompleteSceneLoad;
     }
     public void OnStartSceneLoad(OWScene originalScene, OWScene loadScene) {
         if(loadScene == OWScene.SolarSystem) {
             ModHelper.Console.WriteLine("Start OW scene load!", MessageType.Success);//TEST
-            LoadCurrentSystem();
+            LoadCurrentSystem();//TODO only when Resume button, not death!
         }
     }
     public void OnCompleteSceneLoad(OWScene previousScene, OWScene newScene) {
@@ -583,8 +589,11 @@ public class NomaiSky : ModBehaviour {
         bool waitForWrite = false;
         (int x, int y, int z) = currentCenter;
         currentCenter = newCoords;
-        remainingFuel = ship.resources.GetFuel();
-        PlayerData._currentGameSave.shipLogFactSaves["NomaiSky_remainingFuel"] = new ShipLogFactSave(remainingFuel.ToString(CultureInfo.InvariantCulture));
+        if(ship.resources != null) {
+            remainingFuel = ship.resources.GetFuel();
+            PlayerData._currentGameSave.shipLogFactSaves["NomaiSky_remainingFuel"] = new ShipLogFactSave(remainingFuel.ToString(CultureInfo.InvariantCulture));
+            Locator.GetToolModeSwapper().GetItemCarryTool().DropItemInstantly(null, ship.transform);
+        }
         if(!visited.Contains(newCoords)) {
             DictUpdate(currentCenter.x - x, currentCenter.y - y, currentCenter.z - z);
             if(!otherModsSystems.ContainsKey(newCoords)) {
@@ -631,7 +640,7 @@ public class NomaiSky : ModBehaviour {
                     shipSpawnPoint.rotation = entryRotation;
                     ModHelper.Events.Unity.FireInNUpdates(() => {
                         ship.transform.GetComponent<ShipBody>().SetVelocity(entrySpeed);
-                        ModHelper.Console.WriteLine("Ship speed " + ship.body.GetVelocity());//TEST
+                        //ModHelper.Console.WriteLine("Ship speed " + ship.body.GetVelocity());//TEST
                     }, 61);
                 } else {
                     shipSpawnPoint.position = new Vector3(0, 10000, -34100);
@@ -643,7 +652,11 @@ public class NomaiSky : ModBehaviour {
         ModHelper.Events.Unity.FireInNUpdates(() => {
             Transform shipTemp = Locator.GetShipTransform();
             ship = (shipTemp, Locator.GetShipBody(), shipTemp.GetComponent<ShipResources>(), shipTemp.GetComponentInChildren<ShipCockpitController>(), shipTemp.GetComponentInChildren<SuitPickupVolume>(), shipTemp.GetComponent<WarpController>());
+            //Set custom maxFuel unless Resource Management is enabled:
+            if(!hasRM) ship.resources._maxFuel = maxFuel;
             if(!otherModsSystems.ContainsKey(currentCenter)) {
+                //Keep current fuel level:
+                ship.resources.SetFuel(remainingFuel);
                 //Spawn into ship:
                 PlayerSpawner playerSpawner = Locator.GetPlayerBody().GetComponent<PlayerSpawner>();
                 playerSpawner.DebugWarp(playerSpawner.GetSpawnPoint(SpawnLocation.Ship));
@@ -651,10 +664,12 @@ public class NomaiSky : ModBehaviour {
                 RefuelingTool refuelingTool = GameObject.Find("FuelSiphon").GetComponent<RefuelingTool>();
                 ToolModeSwapper toolModeSwapper = Locator.GetToolModeSwapper();
                 ItemTool itemTool = toolModeSwapper.GetItemCarryTool();
-                itemTool.MoveItemToCarrySocket(refuelingTool);
-                itemTool._heldItem = refuelingTool;
+                itemTool.PickUpItemInstantly(refuelingTool);
                 itemTool.UpdateState(ItemTool.PromptState.PICK_UP, refuelingTool.GetDisplayName());
                 toolModeSwapper.EquipToolMode(ToolMode.Item);
+                ModHelper.Events.Unity.FireInNUpdates(() => {
+                    Locator.GetPromptManager().TriggerVisibilityRefresh(refuelingTool.GetPrompt());//TEST
+                }, 3);
                 //Equip suit:
                 ship.suit.OnPressInteract(ship.suit._interactVolume.GetInteractionAt(ship.suit._pickupSuitCommandIndex).inputCommand);
                 //Sit at ship controls:
@@ -663,10 +678,6 @@ public class NomaiSky : ModBehaviour {
             //Updates custom warp drive:
             if(ship.warp == null) ship.warp = ship.transform.gameObject.AddComponent<WarpController>();
             ship.warp.currentOffset = galacticMap[currentCenter].offset;
-            //Set custom maxFuel unless Resource Management is enabled:
-            if(!hasRM) ship.resources._maxFuel = maxFuel;
-            //Keep current fuel level:
-            ship.resources.SetFuel(remainingFuel);
             //Spawn surrounding stars:
             GenerateNeighborhood();
             ModHelper.Console.WriteLine("Loaded into " + galacticMap[currentCenter].starName + " (" + systemName + ")! Current galaxy: " + galaxyName, MessageType.Success);
@@ -724,7 +735,7 @@ public class NomaiSky : ModBehaviour {
             foreach(string prop in props[i]) {
                 index = Random128.Rng.Range(-planetPropWeight, nbMoons) + 1;
                 if(index < 0) index = 0;
-                moonProps[index] = (String.IsNullOrEmpty(moonProps[index]) ? "" : moonProps[index] + ",\n") + "        " + prop;
+                moonProps[index] = (String.IsNullOrEmpty(moonProps[index]) ? "" : moonProps[index] + ",\n") + "\t\t" + prop;
             }
             string planetName = PlanetNameGen(i + "Name");
             Directory.CreateDirectory(Path.Combine(path, planetName));
@@ -818,7 +829,7 @@ public class NomaiSky : ModBehaviour {
             """;
         return finalJson;
     }
-    string PlanetCreator(string starName, string planetName, int orbit, string rareProps, string orbiting = "") {
+    string PlanetCreator(string starName, string planetName, int orbit, string props = null, string orbiting = "") {
         string relativePath = "planets/" + galaxyName + "-" + currentCenter.x + "-" + currentCenter.y + "-" + currentCenter.z + "/" + (orbiting != "" ? orbiting + "/" : "") + planetName.Replace(' ', '_') + "/";
         string characteristics = "A ";
         List<char> vowels = ['a', 'e', 'i', 'o', 'u'];
@@ -828,7 +839,7 @@ public class NomaiSky : ModBehaviour {
         finalJson += "\"canShowOnTitle\": false,\n" +
             "\"Base\": {\n";
         float radius = (orbiting == "") ? GaussianDist(avgPlanetRadius, varPlanetRadius, planetName + "Radius") : GaussianDist(avgMoonRadius, varMoonRadius, planetName + "Radius");
-        finalJson += "    \"surfaceSize\": " + radius.ToString(CultureInfo.InvariantCulture) + ",\n";
+        finalJson += "\t\"surfaceSize\": " + radius.ToString(CultureInfo.InvariantCulture) + ",\n";
         characteristics += (radius * (orbiting == "" ? 1 : avgPlanetRadius / avgMoonRadius)) switch {
             > avgPlanetRadius + 2.6f * varPlanetRadius => "enormous ",
             > avgPlanetRadius + 2 * varPlanetRadius => "huge ",
@@ -839,7 +850,7 @@ public class NomaiSky : ModBehaviour {
             _ => ""
         };
         float temp = GaussianDist(radius * 12 / 500, planetName + "Gravity");
-        finalJson += "    \"surfaceGravity\": " + temp.ToString(CultureInfo.InvariantCulture) + ",\n";
+        finalJson += "\t\"surfaceGravity\": " + temp.ToString(CultureInfo.InvariantCulture) + ",\n";
         characteristics += (temp * 125 / radius) switch {
             > 5.6f => "ultradense ",
             > 5 => "dense ",
@@ -849,26 +860,28 @@ public class NomaiSky : ModBehaviour {
             < 2 => "light ",
             _ => ""
         };
-        finalJson += "    \"gravityFallOff\": \"inverseSquared\"\n" +
+        finalJson += "\t\"gravityFallOff\": \"inverseSquared\"\n" +
             "},\n" +
             "\"HeightMap\": {\n";
         Color32 color = CGaussianDist(130, 50, 2.5f, planetName + "Color", 255);
         SpriteGenerator("planet", relativePath + "map_planet.png", color);
-        Heightmaps.CreateHeightmap(Path.Combine(ModHelper.Manifest.ModFolderPath, relativePath), radius, color);
+        Heightmaps.CreateHeightmap(Path.Combine(ModHelper.Manifest.ModFolderPath, relativePath), radius, color, out float hmLow, out float hmHigh, planetName + "Heightmap");
         //ModHelper.Console.WriteLine(planetName+"'s HM done! " + stemp); //TEST
         float sqrtRadius = Mathf.Sqrt(radius);
-        finalJson += "    \"heightMap\": \"" + relativePath + "heightmap.png\",\n" +
-            "    \"minHeight\": " + (radius - 3 * sqrtRadius).ToString(CultureInfo.InvariantCulture) + ",\n" +
-            "    \"maxHeight\": " + (radius + 8 * sqrtRadius).ToString(CultureInfo.InvariantCulture) + ",\n" +
-            "    \"textureMap\": \"" + relativePath + "texture.png\",\n";
-        /*finalJson += "    \"emissionColor\": {\n" +
-            "        \"r\": " + colorR + ",\n" +
-            "        \"g\": " + colorG + ",\n" +
-            "        \"b\": " + colorB + "\n";
-        finalJson += "    },\n";//*/
+        hmLow = radius + (hmLow * 11 - 3) * sqrtRadius;
+        hmHigh = radius + (hmHigh * 11 - 3) * sqrtRadius;
+        finalJson += "\t\"heightMap\": \"" + relativePath + "heightmap.png\",\n" +
+            "\t\"minHeight\": " + (radius - 3 * sqrtRadius).ToString(CultureInfo.InvariantCulture) + ",\n" +
+            "\t\"maxHeight\": " + (radius + 8 * sqrtRadius).ToString(CultureInfo.InvariantCulture) + ",\n" +
+            "\t\"textureMap\": \"" + relativePath + "texture.png\",\n";
+        /*finalJson += "\t\"emissionColor\": {\n" +
+            "\t\t\"r\": " + colorR + ",\n" +
+            "\t\t\"g\": " + colorG + ",\n" +
+            "\t\t\"b\": " + colorB + "\n";
+        finalJson += "\t},\n";//*/
         string stemp = GetColorName(color) + " ";
         temp = Mathf.Max(GaussianDist(0, 0.2f, 5, planetName + "Smoothness"), 0);
-        finalJson += "    \"smoothness\": " + temp.ToString(CultureInfo.InvariantCulture) + "\n";
+        finalJson += "\t\"smoothness\": " + temp.ToString(CultureInfo.InvariantCulture) + "\n";
         characteristics += temp switch {
             > 0.9f => "mirror ",
             > 0.8f => stemp + "mirror ",
@@ -884,29 +897,30 @@ public class NomaiSky : ModBehaviour {
         finalJson += "},\n" +
             "\"Orbit\": {\n";
         if(orbiting != "") {
-            finalJson += "    \"isMoon\": true,\n" +
-                "    \"primaryBody\": \"" + orbiting + "\",\n";
+            finalJson += "\t\"isMoon\": true,\n" +
+                "\t\"primaryBody\": \"" + orbiting + "\",\n";
             characteristics += "moon";
         } else {
-            finalJson += "    \"primaryBody\": \"" + starName + "\",\n";
+            finalJson += "\t\"primaryBody\": \"" + starName + "\",\n";
             characteristics += "planet";
         }
-        finalJson += "    \"semiMajorAxis\": " + orbit + ",\n" +
-            "    \"inclination\": " + GaussianDist(0, 10, 9, planetName + "Inclination").ToString(CultureInfo.InvariantCulture) + ",\n" +
-            "    \"longitudeOfAscendingNode\": " + Random128.Rng.Range(0, 360, planetName + "LOAN") + ",\n" +
-            "    \"trueAnomaly\": " + Random128.Rng.Range(0, 360, planetName + "Anomaly") + ",\n" +
-            "    \"isTidallyLocked\": " + (Random128.Rng.Proba(planetName + "Lock") < tidalLockProba).ToString().ToLower() + "\n" +
+        finalJson += "\t\"semiMajorAxis\": " + orbit + ",\n" +
+            "\t\"inclination\": " + GaussianDist(0, 5, 18, planetName + "Inclination").ToString(CultureInfo.InvariantCulture) + ",\n" +
+            "\t\"longitudeOfAscendingNode\": " + Random128.Rng.Range(0, 360, planetName + "LOAN") + ",\n" +
+            (Random128.Rng.Proba(planetName + "Lock") < tidalLockProba ? "\t\"isTidallyLocked\": true,\n\t\"alignmentAxis\": {\"x\": 0, \"y\": 0, \"z\": 1},\n"
+            : "\t\"axialTilt\": " + GaussianDist(0, 10, 9, planetName + "AxialTilt").ToString(CultureInfo.InvariantCulture) + ",\n") +
+            "\t\"trueAnomaly\": " + Random128.Rng.Range(0, 360, planetName + "Anomaly") + "\n" +
             "},\n";
         float ringRadius = 0;
-        if(Random128.Rng.Proba(planetName + "HasRings") < ringsProba) {
+        if(orbiting == "" && Random128.Rng.Proba(planetName + "HasRings") < ringsProba) {
             finalJson += "\"Rings\": [{\n";
             float ringInnerRadius = GaussianDist(radius * ringAvgInnerRadius, radius * (ringAvgInnerRadius * 4 / 5 - 1) / 3, planetName + "RingInner");
-            finalJson += "    \"innerRadius\": " + ringInnerRadius.ToString(CultureInfo.InvariantCulture) + ",\n";
+            finalJson += "\t\"innerRadius\": " + ringInnerRadius.ToString(CultureInfo.InvariantCulture) + ",\n";
             float ringSpread = (radius * ringAvgOuterRadius - ringInnerRadius) / 2;
             ringRadius = GaussianDist(radius * ringAvgOuterRadius - ringSpread, ringSpread / 3, planetName + "RingOuter");
-            finalJson += "    \"outerRadius\": " + ringRadius.ToString(CultureInfo.InvariantCulture) + ",\n" +
-                "    \"texture\": \"" + relativePath + "rings.png\",\n" +
-                "    \"fluidType\": \"sand\"\n" +
+            finalJson += "\t\"outerRadius\": " + ringRadius.ToString(CultureInfo.InvariantCulture) + ",\n" +
+                "\t\"texture\": \"" + relativePath + "rings.png\",\n" +
+                "\t\"fluidType\": \"sand\"\n" +
                 "}],\n";
             color = CGaussianDist(130, 50, 2.5f, null, BGaussianDist(200, 50, 4, planetName + "RingsColor"));
             Random128.Rng.Start(planetName + "Rings");
@@ -915,53 +929,77 @@ public class NomaiSky : ModBehaviour {
             stemp = " and ";
         } else stemp = ", with ";
         bool hasWater = Random128.Rng.Proba(planetName + "Water") < waterProba;
-        if(hasWater) {
+        bool hasFuelOcean = props != null && props.Substring(2, 4) == "fuel";
+        int fuelType = 0;
+        if(hasFuelOcean) {
+            props = props.Substring(6);
+            fuelType = Random128.Rng.Proba(planetName + "Fuel") switch {
+                < fuelMethaneProba => 1,
+                < fuelMethaneProba + fuelAlcoholProba => 2,
+                < fuelMethaneProba + fuelAlcoholProba + fuelHydrogenProba => 3,
+                < fuelMethaneProba + fuelAlcoholProba + fuelHydrogenProba + fuelStrangerProba => 4,
+                _ => 0
+            };
+        }
+        float waterLevel = 0;
+        if(hasWater || hasFuelOcean) {
+            waterLevel = GaussianDist((hmHigh + hmLow) / 2 + (hmHigh - hmLow) / 8, (hmHigh - hmLow) / 4, 2, planetName + "WaterLevel");
             finalJson += "\"Water\": {\n" +
-                "    \"size\": " + GaussianDist(radius + 2 * sqrtRadius, sqrtRadius, 5, planetName + "WaterLevel").ToString(CultureInfo.InvariantCulture) + ",\n" +
-                "    \"tint\": {\n" +
-                "        \"r\": " + BGaussianDist(100, 50, 2, planetName + "WaterColor") + ",\n" +
-                "        \"g\": " + BGaussianDist(100, 50, 2) + ",\n" +
-                "        \"b\": " + BGaussianDist(255, 50) + ",\n" +
-                "        \"a\": " + BGaussianDist(105, 50) + "\n" +
-                "    }\n" +
+                "\t\"size\": " + waterLevel.ToString(CultureInfo.InvariantCulture) + ",\n" +
+                "\t\"tint\": {\n" +
+                (hasFuelOcean ?
+                    "\t\t\"r\": " + fuelType switch { 0 => 204, 1 => 64, 2 => 255, 3 => 183, _ => 41 } + ",\n" +
+                    "\t\t\"g\": " + fuelType switch { 0 => 103, 1 => 32, 2 => 196, 3 => 195, _ => 204 } + ",\n" +
+                    "\t\t\"b\": " + fuelType switch { 0 => 0, 1 => 0, 2 => 44, 3 => 203, _ => 163 } + ",\n" +
+                    "\t\t\"a\": 127\n" +
+                    "\t},\n" +
+                    "\t\"buoyancy\": " + fuelType switch { 0 => "0.8", 1 => "0.42", 2 => "0.79", 3 => "0.07", _ => "2" } + "\n"
+                :
+                    "\t\t\"r\": " + BGaussianDist(100, 50, 2, planetName + "WaterColor") + ",\n" +
+                    "\t\t\"g\": " + BGaussianDist(100, 50, 2) + ",\n" +
+                    "\t\t\"b\": " + BGaussianDist(255, 50) + ",\n" +
+                    "\t\t\"a\": " + BGaussianDist(105, 50) + "\n" +
+                    "\t},\n" +
+                    "\t\"buoyancy\": " + GaussianDist(1, 0.2f, 5).ToString(CultureInfo.InvariantCulture) + "\n"
+                ) +
                 "},\n";
         }
         float atmosphereSize = GaussianDist(radius * 6 / 5, radius / 10, 4, planetName + "AtmSize");
         finalJson += "\"Atmosphere\": {\n" +
-            "    \"size\": " + atmosphereSize.ToString(CultureInfo.InvariantCulture) + ",\n" +
-            "    \"atmosphereTint\": {\n";
+            "\t\"size\": " + atmosphereSize.ToString(CultureInfo.InvariantCulture) + ",\n" +
+            "\t\"atmosphereTint\": {\n";
         color = CGaussianDist(200, 50, 4, null, BGaussianDist(255, 50, 5, planetName + "AtmColor"));
         SpriteGenerator("atmosphere", relativePath + "map_atmosphere.png", color);
-        finalJson += "        \"r\": " + color.r + ",\n" +
-            "        \"g\": " + color.g + ",\n" +
-            "        \"b\": " + color.b + ",\n" +
-            "        \"a\": " + color.a + "\n";
-        finalJson += "    },\n";
+        finalJson += "\t\t\"r\": " + color.r + ",\n" +
+            "\t\t\"g\": " + color.g + ",\n" +
+            "\t\t\"b\": " + color.b + ",\n" +
+            "\t\t\"a\": " + color.a + "\n";
+        finalJson += "\t},\n";
         bool hasClouds = false;
         if(atmosphereSize > radius * 6 / 5) {
             characteristics += stemp;
             stemp = GetColorName(color) + " atmosphere";
             if(Random128.Rng.Proba(planetName + "Fog") < fogProbaIfAtmBig) {
-                finalJson += "    \"fogTint\": {\n" +
-                    "        \"r\": " + BGaussianDist(130, 50, 2.5f, planetName + "FogColor") + ",\n" +
-                    "        \"g\": " + BGaussianDist(130, 50, 2.5f) + ",\n" +
-                    "        \"b\": " + BGaussianDist(130, 50, 2.5f) + ",\n" +
-                    "        \"a\": " + BGaussianDist(255, 50, 5) + "\n" +
-                    "    },\n" +
-                    "    \"fogSize\": " + Random128.Rng.Range(radius, atmosphereSize, planetName + "FogSize").ToString(CultureInfo.InvariantCulture) + ",\n" +
-                    "    \"fogDensity\": " + Random128.Rng.Proba(planetName + "FogDens").ToString(CultureInfo.InvariantCulture) + ",\n";
+                finalJson += "\t\"fogTint\": {\n" +
+                    "\t\t\"r\": " + BGaussianDist(130, 50, 2.5f, planetName + "FogColor") + ",\n" +
+                    "\t\t\"g\": " + BGaussianDist(130, 50, 2.5f) + ",\n" +
+                    "\t\t\"b\": " + BGaussianDist(130, 50, 2.5f) + ",\n" +
+                    "\t\t\"a\": " + BGaussianDist(255, 50, 5) + "\n" +
+                    "\t},\n" +
+                    "\t\"fogSize\": " + Random128.Rng.Range(radius, atmosphereSize, planetName + "FogSize").ToString(CultureInfo.InvariantCulture) + ",\n" +
+                    "\t\"fogDensity\": " + Random128.Rng.Proba(planetName + "FogDens").ToString(CultureInfo.InvariantCulture) + ",\n";
             }
             hasClouds = Random128.Rng.Proba(planetName + "Clouds") < cloudsProbaIfAtmBig;
             if(hasClouds) {
-                finalJson += "    \"clouds\": {\n" +
-                "        \"texturePath\": \"assets/images/clouds" + Random128.Rng.Range(0, 3) switch { 0 => "-cap.png", 1 => "-center.jpg", _ => ".jpg" } + "\",\n" +
-                "        \"tint\": {\"r\": " + color.r + ", \"g\": " + color.g + ", \"b\": " + color.b + "},\n" +
-                "        \"cloudsPrefab\": \"" + "basic\",\n" + //Random128.Rng.Proba() switch { < cloudsGDProba => "giantsDeep", < cloudsGDProba + cloudsQMProba => "quantumMoon", _ => "basic" } + "\",\n" + //TEMP (need GD and QM textures)
-                "        \"hasLightning\":" + (Random128.Rng.Proba(planetName + "Lightning") < lightningProbaIfClouds).ToString().ToLower() + ",\n" +
-                "        \"innerCloudRadius\":" + atmosphereSize.ToString(CultureInfo.InvariantCulture) + ",\n" +
-                "        \"outerCloudRadius\":" + Random128.Rng.Range(atmosphereSize + 1, (3 * atmosphereSize - radius) / 2, planetName + "CloudSize").ToString(CultureInfo.InvariantCulture) + ",\n" +
-                "        \"rotationSpeed\":" + IGaussianDist(0, cloudsMaxSpeed / 3, planetName + "CloudRotation").ToString(CultureInfo.InvariantCulture) + "\n" +
-                "    },\n";
+                finalJson += "\t\"clouds\": {\n" +
+                "\t\t\"texturePath\": \"assets/images/clouds" + Random128.Rng.Range(0, 3) switch { 0 => "-cap.png", 1 => "-center.jpg", _ => ".jpg" } + "\",\n" +
+                "\t\t\"tint\": {\"r\": " + color.r + ", \"g\": " + color.g + ", \"b\": " + color.b + "},\n" +
+                "\t\t\"cloudsPrefab\": \"" + "basic\",\n" + //Random128.Rng.Proba() switch { < cloudsGDProba => "giantsDeep", < cloudsGDProba + cloudsQMProba => "quantumMoon", _ => "basic" } + "\",\n" + //TEMP (need GD and QM textures)
+                "\t\t\"hasLightning\": " + (Random128.Rng.Proba(planetName + "Lightning") < lightningProbaIfClouds).ToString().ToLower() + ",\n" +
+                "\t\t\"innerCloudRadius\": " + atmosphereSize.ToString(CultureInfo.InvariantCulture) + ",\n" +
+                "\t\t\"outerCloudRadius\": " + Random128.Rng.Range(atmosphereSize + 1, (3 * atmosphereSize - radius) / 2, planetName + "CloudSize").ToString(CultureInfo.InvariantCulture) + ",\n" +
+                "\t\t\"rotationSpeed\": " + IGaussianDist(0, cloudsMaxSpeed / 3, planetName + "CloudRotation") + "\n" +
+                "\t},\n";
                 characteristics += "a cloudy " + stemp;
             } else {
                 characteristics += (vowels.Contains(stemp[0]) ? "an " : "a ") + stemp;
@@ -976,52 +1014,63 @@ public class NomaiSky : ModBehaviour {
             hasOxygenTrees = Random128.Rng.Proba(planetName + "Oxygen") < oxygenProbaNoWater;
             stemp = ". T";
         }
-        finalJson += "    \"hasOxygen\": " + hasOxygenTrees.ToString().ToLower() + ",\n";
+        finalJson += "\t\"hasOxygen\": " + hasOxygenTrees.ToString().ToLower() + ",\n";
         if(hasOxygenTrees) {
             characteristics += stemp + "here seems to be oxygen";
             hasOxygenTrees = Random128.Rng.Proba(planetName + "Trees") < treeProbaIfOxygen;
         }
-        finalJson += "    \"hasTrees\": " + hasOxygenTrees.ToString().ToLower() + ",\n" +
-            "    \"hasRain\": " + (hasClouds ? (Random128.Rng.Proba(planetName + "Rain") < (hasWater ? rainProbaIfCloudsAndWater : rainProbaIfCloudsNoWater)).ToString().ToLower() : "false") + "\n" +
+        finalJson += "\t\"hasTrees\": " + hasOxygenTrees.ToString().ToLower() + ",\n" +
+            "\t\"hasRain\": " + (hasClouds ? (Random128.Rng.Proba(planetName + "Rain") < (hasWater ? rainProbaIfCloudsAndWater : rainProbaIfCloudsNoWater)).ToString().ToLower() : "false") + "\n" +
             "},\n";
-        if(hasOxygenTrees || rareProps != null) {
-            finalJson += "\"Props\": {\n" +
-                "    \"scatter\": [\n" +
-                (rareProps != null ? rareProps + (hasOxygenTrees ? ",\n" : "\n") : "");
-            if(hasOxygenTrees) {
-                finalJson += "        {\"path\": \"" + (hasDLC ? "DreamWorld_Body/Sector_DreamWorld/Sector_Underground/IslandsRoot/IslandPivot_B/Island_B/Props_Island_B/Tree_DW_L (3)" : "QuantumMoon_Body/Sector_QuantumMoon/State_TH/Interactables_THState/Crater_1/Crater_1_QRedwood/QRedwood (2)/Prefab_TH_Redwood") + "\", \"count\": " + IGaussianDist(radius * radius / 1250, planetName + "NbBTrees") + ", \"scale\": " + GaussianDist(1, 0.2f, planetName + "SizeBTrees").ToString(CultureInfo.InvariantCulture) + "},\n" +
-                    "        {\"path\": \"" + (hasDLC ? "DreamWorld_Body/Sector_DreamWorld/Sector_DreamZone_4/Props_DreamZone_4_Upper/Tree_DW_S_B" : "QuantumMoon_Body/Sector_QuantumMoon/State_TH/Interactables_THState/Crater_3/Crater_3_Sapling/QSapling/Tree_TH_Sapling") + "\", \"count\": " + IGaussianDist(radius * radius / 1250, planetName + "NbLTrees") + ", \"scale\": " + GaussianDist(1, 0.2f, planetName + "SizeLTrees").ToString(CultureInfo.InvariantCulture) + "}\n";
-                characteristics += " and trees";
+        if(hasOxygenTrees || props != null) {
+            finalJson += "\"Props\": {\n";
+            if(hasFuelOcean) {
+                finalJson += "\t\"details\": [{\n" +
+                    "\t\t\"assetBundle\": \"assets/trifid_nomaisky\",\n" +
+                    "\t\t\"path\": \"Assets/NomaiSky/"+fuelType switch { 0 => "Kerosene", 1 => "Methane", 2 => "Alcohol", 3 => "Hydrogen", _ => "StrangerFuel" } + "Ocean.prefab\",\n" +
+                    //"\t\t\"keepLoaded\": true,\n" +
+                    "\t\t\"scale\": " + waterLevel.ToString(CultureInfo.InvariantCulture) +
+                    "\n\t}]";
             }
-            finalJson += "    ]\n" +
-                "},\n";
+            if(hasOxygenTrees || !String.IsNullOrEmpty(props)) {
+                if(hasFuelOcean) finalJson += ",\n";
+                finalJson += "\t\"scatter\": [\n" +
+                    (!String.IsNullOrEmpty(props) ? props + (hasOxygenTrees ? ",\n" : "\n") : "");
+                if(hasOxygenTrees) {
+                    finalJson += "\t\t{\"path\": \"" + (hasDLC ? "DreamWorld_Body/Sector_DreamWorld/Sector_Underground/IslandsRoot/IslandPivot_B/Island_B/Props_Island_B/Tree_DW_L (3)" : "QuantumMoon_Body/Sector_QuantumMoon/State_TH/Interactables_THState/Crater_1/Crater_1_QRedwood/QRedwood (2)/Prefab_TH_Redwood") + "\", \"count\": " + IGaussianDist(radius * radius / 1250, planetName + "NbBTrees") + ", \"scale\": " + GaussianDist(1, 0.2f, planetName + "SizeBTrees").ToString(CultureInfo.InvariantCulture) + "},\n" +
+                        "\t\t{\"path\": \"" + (hasDLC ? "DreamWorld_Body/Sector_DreamWorld/Sector_DreamZone_4/Props_DreamZone_4_Upper/Tree_DW_S_B" : "QuantumMoon_Body/Sector_QuantumMoon/State_TH/Interactables_THState/Crater_3/Crater_3_Sapling/QSapling/Tree_TH_Sapling") + "\", \"count\": " + IGaussianDist(radius * radius / 1250, planetName + "NbLTrees") + ", \"scale\": " + GaussianDist(1, 0.2f, planetName + "SizeLTrees").ToString(CultureInfo.InvariantCulture) + "}\n";
+                    characteristics += " and trees";
+                }
+                finalJson += "\t]";
+            }
+            finalJson += "\n},\n";
         }
         characteristics += ".";
         finalJson += "\"ShipLog\": {\n" +
-            "    \"spriteFolder\": \"" + relativePath + "sprites\",\n" +
-            "    \"xmlFile\": \"" + relativePath + "shiplogs.xml\",\n" +
-            "    \"mapMode\": {\n" +
-            "        \"outlineSprite\": \"assets/images/outline.png\",\n" +
-            "        \"revealedSprite\": \"" + relativePath + "map_atmosphere.png\",\n" +
-            "        \"scale\": " + (atmosphereSize / 500f).ToString(CultureInfo.InvariantCulture) + ",\n" +
-            "        \"offset\": " + (atmosphereSize / 500f).ToString(CultureInfo.InvariantCulture) + ",\n" +
-            "        \"details\": [\n" +
-            "            {\"revealedSprite\": \"" + relativePath + "map_planet.png\",\n" +
-            "            \"scale\": {\"x\": " + (radius / 500f).ToString(CultureInfo.InvariantCulture) + ",\"y\": " + (radius / 500f).ToString(CultureInfo.InvariantCulture) + "},\n";
+            "\t\"spriteFolder\": \"" + relativePath + "sprites\",\n" +
+            "\t\"xmlFile\": \"" + relativePath + "shiplogs.xml\",\n" +
+            "\t\"mapMode\": {\n" +
+            "\t\t\"outlineSprite\": \"assets/images/outline.png\",\n" +
+            "\t\t\"revealedSprite\": \"" + relativePath + "map_atmosphere.png\",\n" +
+            "\t\t\"scale\": " + (atmosphereSize / 500f).ToString(CultureInfo.InvariantCulture) + ",\n" +
+            "\t\t\"offset\": " + (atmosphereSize / 500f).ToString(CultureInfo.InvariantCulture) + ",\n" +
+            "\t\t\"details\": [\n" +
+            "\t\t\t{\"revealedSprite\": \"" + relativePath + "map_planet.png\",\n" +
+            "\t\t\t\"scale\": {\"x\": " + (radius / 500f).ToString(CultureInfo.InvariantCulture) + ",\"y\": " + (radius / 500f).ToString(CultureInfo.InvariantCulture) + "},\n";
         if(ringRadius > 0) {
-            finalJson += "            \"invisibleWhenHidden\": true},\n" +
-                "            {\"revealedSprite\": \"" + relativePath + "map_rings.png\",\n" +
-                "            \"scale\": {\"x\": " + (ringRadius / 500f).ToString(CultureInfo.InvariantCulture) + ",\"y\": " + (ringRadius / 500f).ToString(CultureInfo.InvariantCulture) + "},\n";
+            finalJson += "\t\t\t\"invisibleWhenHidden\": true},\n" +
+                "\t\t\t{\"revealedSprite\": \"" + relativePath + "map_rings.png\",\n" +
+                "\t\t\t\"scale\": {\"x\": " + (ringRadius / 500f).ToString(CultureInfo.InvariantCulture) + ",\"y\": " + (ringRadius / 500f).ToString(CultureInfo.InvariantCulture) + "},\n";
         }
-        finalJson += "            \"invisibleWhenHidden\": true}\n" +
-            "        ]\n" +
-            "    }\n" +
+        finalJson += "\t\t\t\"invisibleWhenHidden\": true}\n" +
+            "\t\t]\n" +
+            "\t}\n" +
             "},\n" +
             "\"Volumes\": {\n" +
-            "    \"revealVolumes\": [\n" +
-            "        {\"radius\": " + (1.6f * (ringRadius > 0 ? ringRadius : radius)).ToString(CultureInfo.InvariantCulture) + ",\n" +
-            "        \"reveals\": [\"VAMBOK.NOMAISKY_" + generationVersion + "_" + galaxyName + "-" + currentCenter.x + "-" + currentCenter.y + "-" + currentCenter.z + "_" + planetName.Replace(' ', '_').ToUpper() + "\"]}\n" +
-            "    ]\n" +
+            "\t\"revealVolumes\": [\n" +
+            "\t\t{\"radius\": " + (1.6f * (ringRadius > 0 ? ringRadius : radius)).ToString(CultureInfo.InvariantCulture) + ",\n" +
+            "\t\t\"reveals\": [\"VAMBOK.NOMAISKY_" + generationVersion + "_" + galaxyName + "-" + currentCenter.x + "-" + currentCenter.y + "-" + currentCenter.z + "_" + planetName.Replace(' ', '_').ToUpper() + "\"]}\n" +
+            "\t]\n" +
             "},\n" +
             "\"MapMarker\": {\"enabled\": true}\n}";
         AssetsMaker(relativePath, planetName, characteristics);
@@ -1383,23 +1432,22 @@ public class NomaiSky : ModBehaviour {
 
 
 //URGENT:
-//  add fuel vol to systems (and remove fuel tanks)
+//  Load only when Resume button, not death!
 //  ArgumentException: An item with the same key has already been added. Key: VAMBOK.NOMAISKY_0.3.1_0--12--5-2_HIUNERTH ; Error : There must be one and only one centerOfSolarSystem! Found [2]
 //TODO:
 //  add mysterious artefacts (one / 10 systems) that increase warpPower towards 1
-//  warp loading black (not freeze)
 //  handle different save profiles (visitedSystem.txt)
 //  add signals to rare scatter
 //  Gneiss banjo quest
 //  correct scatter function (sample consistency)
-//  add clouds (rain only if)
-//  hardcode array of (x, y, Vector3) for heightmaps
+//  fix LODcubesphere1 (distant HM)
 //MAYBE?:
-//  add heightmaps mipmap1
 //  correct textures, big planets gets higher res?
 //  fix floating point shaking
+//  warp loading black (not freeze)
 //TO TEST:
-//  fix fuel tool taking (flight console hide prompt?)
+//  fix fuel tool prompt at spawn at flight console
+//  fuel tool brakes when taken in a non NMS system
 //DONE:
 //  bigger referenceframevolume (entryradius)
 //  galactic key not found
@@ -1419,7 +1467,7 @@ public class NomaiSky : ModBehaviour {
 //  talk about atmosphere only if big enough
 //  add water level sometimes
 //  add compat mods
-//  change system names to its coords
+//  change systems names to their coords
 //  regen systems in place
 //  add respawn in system config
 //  allow autopilot on stars
@@ -1435,3 +1483,9 @@ public class NomaiSky : ModBehaviour {
 //  refuel suit from ship
 //  add coords to star names
 //  add random Color utility
+//  add fuel vol to systems (and remove fuel tanks)
+//  add clouds (rain only if)
+//  fix fuel tool taking (spawn it and hide prompt)
+//  fix fuel tool particles when exit map
+//  LoadCurrentSystem not called when quit -> resuming???
+//  hardcode array of (x, y, Vector3) for heightmaps

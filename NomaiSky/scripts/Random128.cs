@@ -25,14 +25,14 @@ public class Random128
     public static Random128 Rng { get; private set; }
     public static void Initialize(int a, int b, int c, int d) {
         Rng = new Random128(a, b, c, d);
-        for (int i = (a + b + c + d) % 4 + 19; i > 0; i--)
+        for (int i = (a + b + c + d) % 4 + 39; i > 0; i--)
         {
             Rng.NextStream().NextUInt();
         }
         Rng.NextStream().NextUInt(true);
         Rng.NextStream().NextUInt(true);
         Rng.NextStream().NextUInt(true);
-        Rng.NextStream(true).NextUInt(true);//between 20 and 26 shuffles (at least 5 for each)
+        Rng.NextStream(true).NextUInt(true);//between 40 and 46 shuffles (at least 10 for each)
     }
     public Random128(int seed0, int seed1, int seed2, int seed3) {
         streams[0] = new Xorshift32((uint)seed0);
