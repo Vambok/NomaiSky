@@ -15,6 +15,7 @@ public class RefuelingTool : OWItem
 
     private bool _toolActive;
     private bool _fillingFuel;
+    private bool _fillingPlayer;
     private RefuelingResource _currentResource;
     private RefuelingResource _submergedResource;
 
@@ -23,11 +24,17 @@ public class RefuelingTool : OWItem
 
     public ShipFuelGauge FuelGauge;
     private ShipResources _shipResources;
+    private PlayerResources _playerResources;
     private MeshRenderer[] _thrusterRenderers;
+    private MeshRenderer[] _playerThrusterRenderers;
     private Light[] _thrusterLights;
+    private Light[] _playerThrusterLights;
     private Color _currentThrusterColor = Color.black;
+    private Color _currentPlayerThrusterColor = Color.black;
     private Color _defaultThrusterColor;
+    private Color _defaultPlayerThrusterColor;
     private Texture _defaultThrusterRamp;
+    private Texture _defaultPlayerThrusterRamp;
 
     public GameObject Indicator;
     [ColorUsage(false, true)]
@@ -65,6 +72,7 @@ public class RefuelingTool : OWItem
         _activatePrompt = new ScreenPrompt(ActivateKey, TranslationHandler.GetTranslation("RefuelingTool_Prompt", TranslationHandler.TextType.UI) + "   <CMD>");
 
         _shipResources = Locator.GetShipTransform().GetComponent<ShipResources>();
+        _playerResources = Locator.GetPlayerTransform().GetComponent<PlayerResources>();
         FuelGauge._shipResources = _shipResources;
 
         PlayerAudioController playerAudioController = Locator.GetPlayerAudioController();
@@ -108,6 +116,19 @@ public class RefuelingTool : OWItem
         catch
         {
             Debug.LogError("Failed to locate ship thrusters");
+        }
+        try {
+            ThrusterFlameController[] flames = Locator.GetPlayerTransform().GetComponentsInChildren<ThrusterFlameController>(true);
+            _playerThrusterRenderers = new MeshRenderer[flames.Length];
+            _playerThrusterLights = new Light[flames.Length];
+            for(int i = 0;i < flames.Length;i++) {
+                _playerThrusterRenderers[i] = flames[i].GetComponent<MeshRenderer>();
+                _playerThrusterLights[i] = flames[i].GetComponentInChildren<Light>();
+            }
+            _defaultPlayerThrusterColor = _playerThrusterLights[0].color;
+            _defaultPlayerThrusterRamp = _playerThrusterRenderers[0].material.mainTexture;
+        } catch {
+            Debug.LogError("Failed to locate jetpack thrusters");
         }
 
         enabled = false;
@@ -203,7 +224,8 @@ public class RefuelingTool : OWItem
         }
         if(_toolActive)
         {
-            float fuel = _shipResources.GetFractionalFuel();
+            float playerFuel = _playerResources.GetFuelFraction();
+            float fuel = _shipResources.GetFractionalFuel() * playerFuel;
 
             if(fuel < 1)
             {
@@ -211,9 +233,9 @@ public class RefuelingTool : OWItem
                 {
                     StopRefueling();
                 }
-                else if(_currentResource != resource)
+                else if(_currentResource != resource || (playerFuel < 1) != _fillingPlayer)
                 {
-                    StartRefueling(resource);
+                    StartRefueling(resource, playerFuel < 1);
                 }
             }
 
@@ -236,7 +258,7 @@ public class RefuelingTool : OWItem
 
                     if(_currentResource.Amount > 0)
                     {
-                        _shipResources.AddFuel(Speed * _currentResource.Efficiency * Time.fixedDeltaTime);
+                        if(!_fillingPlayer) _shipResources.AddFuel(Speed * _currentResource.Efficiency * Time.fixedDeltaTime);
                     }
                     else
                     {
@@ -296,9 +318,10 @@ public class RefuelingTool : OWItem
         _indicatorLight.color = c;
     }
 
-    public void StartRefueling(RefuelingResource resource)
+    public void StartRefueling(RefuelingResource resource, bool fillingPlayer)
     {
         _fillingFuel = true;
+        _fillingPlayer = fillingPlayer;
         _currentResource = resource;
 
         Particles.GetComponent<ParticleSystemRenderer>().material.color = resource.FluidColor;
@@ -311,7 +334,13 @@ public class RefuelingTool : OWItem
             _fluidAudioSource.FadeIn(0.25f);
         }
 
-        SetShipThrusterColor(resource.FlameColor, resource.FlameTexture);
+        if(fillingPlayer)
+        {
+            _playerResources.StartRefillResources(true, false);
+            SetPlayerThrusterColor(resource.FlameColor, resource.FlameTexture);
+        }
+        else
+            SetShipThrusterColor(resource.FlameColor, resource.FlameTexture);
     }
 
     public void StopRefueling()
@@ -337,7 +366,7 @@ public class RefuelingTool : OWItem
 
             foreach (MeshRenderer r in _thrusterRenderers)
             {
-                r.material.mainTexture = c == Color.black ? _defaultThrusterRamp : t;
+                r.material.mainTexture = t ?? _defaultThrusterRamp;
             }
             foreach (Light l in _thrusterLights)
             {
@@ -345,6 +374,19 @@ public class RefuelingTool : OWItem
             }
         }
     }
+    public void SetPlayerThrusterColor(Color c, Texture t = null) {
+        if(_currentPlayerThrusterColor != c) {
+            _currentPlayerThrusterColor = c;
+
+            foreach(MeshRenderer r in _playerThrusterRenderers) {
+                r.material.mainTexture = t ?? _defaultPlayerThrusterRamp;
+            }
+            foreach(Light l in _playerThrusterLights) {
+                l.color = c == Color.black ? _defaultPlayerThrusterColor : c;
+            }
+        }
+    }
+
 
     public void SubmergeInResource(RefuelingResource resource)
     {

@@ -37,10 +37,10 @@ public class NomaiSky : ModBehaviour {
         ringsProba = 0.1f,
         ringAvgInnerRadius = 2, //Never less than 1.25! (relative to body radius)
         ringAvgOuterRadius = 3, //>ringAvgInnerRadius! (relative to body radius)
-        fuelMethaneProba = 0.25f,
+        fuelMethaneProba = 0.2f,
         fuelAlcoholProba = 0.25f,
         fuelHydrogenProba = 0.1f,
-        fuelStrangerProba = 0.05f; //If neither fuel will be Kerosene
+        fuelStrangerProba = 0.1f; //If neither fuel will be Kerosene
     ///<summary>How many more bodies could fit in an orbit span with maxBodies (>0 to prevent constant spacing when maxBodies is hit)</summary>
     const int orbitalMargin = 1;
     ///<summary>A rare prop is this many times more likely to spawn on the planet than on each of its moons</summary>
@@ -241,11 +241,16 @@ public class NomaiSky : ModBehaviour {
     public void OnStartSceneLoad(OWScene originalScene, OWScene loadScene) {
         if(loadScene == OWScene.SolarSystem) {
             ModHelper.Console.WriteLine("Start OW scene load!", MessageType.Success);//TEST
-            LoadCurrentSystem();//TODO only when Resume button, not death!
         }
     }
     public void OnCompleteSceneLoad(OWScene previousScene, OWScene newScene) {
-        ModHelper.Console.WriteLine("Scene loaded!", MessageType.Success);//TEST
+        if(newScene == OWScene.TitleScreen) {
+            GameObject.Find("Button-ResumeGame").GetComponent<SubmitActionLoadScene>().OnSubmitAction -= LoadCurrentSystem;
+            GameObject.Find("Button-ResumeGame").GetComponent<SubmitActionLoadScene>().OnSubmitAction += LoadCurrentSystem;
+            GameObject.Find("Button-NewGame").GetComponent<SubmitActionLoadScene>().OnSubmitAction -= LoadCurrentSystem;
+            GameObject.Find("Button-NewGame").GetComponent<SubmitActionLoadScene>().OnSubmitAction += LoadCurrentSystem;
+            ModHelper.Console.WriteLine("Title screen loaded!", MessageType.Success);//TEST
+        }
         /*string toto = Heightmaps.CreateHeightmap(Path.Combine(ModHelper.Manifest.ModFolderPath, "planets/heightmap")); //TEST
         ModHelper.Console.WriteLine("HM done! "+toto, MessageType.Success); //TEST*/
     }
@@ -559,6 +564,10 @@ public class NomaiSky : ModBehaviour {
                         ModHelper.Events.Unity.FireInNUpdates(() => ship.warp.fuelPrompt.SetVisibility(false), Mathf.CeilToInt(1 / Time.deltaTime));
                     }
                 } else {
+                    /*//Not working, screen freezes before:
+                    ship.warp.fuelPrompt.SetText("Warping");
+                    ship.warp.fuelPrompt.SetVisibility(true);
+                    for(int i = 8;i < 256;i += 8) ModHelper.Events.Unity.FireInNUpdates(() => ship.warp.fuelPrompt.SetTextColor(new Color32(255, (byte)(255 - i), (byte)(255 - i), 255)), i);*/
                     ship.resources.DrainFuel(warpFuelConsumption);
                     WarpToSystem(data.coords);
                 }
@@ -1432,7 +1441,6 @@ public class NomaiSky : ModBehaviour {
 
 
 //URGENT:
-//  Load only when Resume button, not death!
 //  ArgumentException: An item with the same key has already been added. Key: VAMBOK.NOMAISKY_0.3.1_0--12--5-2_HIUNERTH ; Error : There must be one and only one centerOfSolarSystem! Found [2]
 //TODO:
 //  add mysterious artefacts (one / 10 systems) that increase warpPower towards 1
@@ -1440,14 +1448,13 @@ public class NomaiSky : ModBehaviour {
 //  add signals to rare scatter
 //  Gneiss banjo quest
 //  correct scatter function (sample consistency)
-//  fix LODcubesphere1 (distant HM)
+//  fix duplicate fuel tool on SolarSystem reentry
+//  save player/ship flames state between games
 //MAYBE?:
 //  correct textures, big planets gets higher res?
 //  fix floating point shaking
 //  warp loading black (not freeze)
 //TO TEST:
-//  fix fuel tool prompt at spawn at flight console
-//  fuel tool brakes when taken in a non NMS system
 //DONE:
 //  bigger referenceframevolume (entryradius)
 //  galactic key not found
@@ -1489,3 +1496,7 @@ public class NomaiSky : ModBehaviour {
 //  fix fuel tool particles when exit map
 //  LoadCurrentSystem not called when quit -> resuming???
 //  hardcode array of (x, y, Vector3) for heightmaps
+//  Load only when Resume button, not death!
+//  fix LODcubesphere1 (distant HM)
+//  fix fuel tool prompt at spawn at flight console
+//  fuel tool brakes when taken in a non NMS system
