@@ -7,8 +7,8 @@ A procedurally generated universe of near infinite possibilities!
 - Billions of star systems
 - You can visit any one of them simply by flying to them (or by warping with the galactic map)
 - Colorful stars, planet and moons with common to rare (ultra rare?) specificities
-- Nothing to interact with yet <sub>*... or is there?*</sub><!-- *ᵒʳ ˡˢ ᵗʰᵉʳᵉ* -->
 - No added Bramble, and anglerfish free*
+- Watch your fuel! Interstellar travel is fuel-intensive. Luckily your thrusters are not picky.
 - If you have other mods installed you may be able to find them among the stars...
 - You can take your time, no star will blow up *(we finally fixed this damn thing!)*  
   
@@ -21,5 +21,6 @@ A procedurally generated universe of near infinite possibilities!
 ### Credits
 
 - Vambok: Programming
-- Trifid: Code tidiness
-- Lezzlebit: Artworks
+- Trifid: New items (modeling and code)
+- Lezzlebit: Mod logo
+- Andrew Prahlow: Music
