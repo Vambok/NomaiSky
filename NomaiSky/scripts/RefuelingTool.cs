@@ -141,7 +141,6 @@ public class RefuelingTool : OWItem
         Destroy(_vacuumAudioSource.gameObject);
         Destroy(_fluidAudioSource.gameObject);
         Destroy(_oneShotAudioSource.gameObject);
-
     }
 
     public override string GetDisplayName()
@@ -337,10 +336,14 @@ public class RefuelingTool : OWItem
         if(fillingPlayer)
         {
             _playerResources.StartRefillResources(true, false);
+            NomaiSky.Instance.jetpackColor = resource.FlameColor;
             SetPlayerThrusterColor(resource.FlameColor, resource.FlameTexture);
         }
         else
+        {
+            NomaiSky.Instance.thrustersColor = resource.FlameColor;
             SetShipThrusterColor(resource.FlameColor, resource.FlameTexture);
+        }
     }
 
     public void StopRefueling()
@@ -374,14 +377,18 @@ public class RefuelingTool : OWItem
             }
         }
     }
-    public void SetPlayerThrusterColor(Color c, Texture t = null) {
-        if(_currentPlayerThrusterColor != c) {
+    public void SetPlayerThrusterColor(Color c, Texture t = null)
+    {
+        if(_currentPlayerThrusterColor != c)
+        {
             _currentPlayerThrusterColor = c;
 
-            foreach(MeshRenderer r in _playerThrusterRenderers) {
+            foreach(MeshRenderer r in _playerThrusterRenderers)
+            {
                 r.material.mainTexture = t ?? _defaultPlayerThrusterRamp;
             }
-            foreach(Light l in _playerThrusterLights) {
+            foreach(Light l in _playerThrusterLights)
+            {
                 l.color = c == Color.black ? _defaultPlayerThrusterColor : c;
             }
         }
