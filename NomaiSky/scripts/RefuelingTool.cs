@@ -228,7 +228,7 @@ public class RefuelingTool : OWItem
 
             if(fuel < 1)
             {
-                if(resource == null)
+                if(resource == null || PlayerState.IsInsideShip())
                 {
                     StopRefueling();
                 }
@@ -333,17 +333,10 @@ public class RefuelingTool : OWItem
             _fluidAudioSource.FadeIn(0.25f);
         }
 
+        NomaiSky.Instance.SetFlameColor(resource.FlameColor, resource.Name, !fillingPlayer);
+        SetThrusterColor(!fillingPlayer, resource.FlameColor, resource.FlameTexture);
         if(fillingPlayer)
-        {
             _playerResources.StartRefillResources(true, false);
-            NomaiSky.Instance.jetpackColor = resource.FlameColor;
-            SetPlayerThrusterColor(resource.FlameColor, resource.FlameTexture);
-        }
-        else
-        {
-            NomaiSky.Instance.thrustersColor = resource.FlameColor;
-            SetShipThrusterColor(resource.FlameColor, resource.FlameTexture);
-        }
     }
 
     public void StopRefueling()
@@ -361,39 +354,41 @@ public class RefuelingTool : OWItem
         }
     }
 
-    public void SetShipThrusterColor(Color c, Texture t = null)
+    public void SetThrusterColor(bool ship, Color c, Texture t = null)
     {
-        if (_currentThrusterColor != c)
+        if (ship)
         {
-            _currentThrusterColor = c;
+            if (_currentThrusterColor != c)
+            {
+                _currentThrusterColor = c;
 
-            foreach (MeshRenderer r in _thrusterRenderers)
-            {
-                r.material.mainTexture = t ?? _defaultThrusterRamp;
+                foreach (MeshRenderer r in _thrusterRenderers)
+                {
+                    r.material.mainTexture = t ?? _defaultThrusterRamp;
+                }
+                foreach (Light l in _thrusterLights)
+                {
+                    l.color = c == Color.black ? _defaultThrusterColor : c;
+                }
             }
-            foreach (Light l in _thrusterLights)
+        }
+        else
+        {
+            if(_currentPlayerThrusterColor != c)
             {
-                l.color = c == Color.black ? _defaultThrusterColor : c;
+                _currentPlayerThrusterColor = c;
+
+                foreach(MeshRenderer r in _playerThrusterRenderers)
+                {
+                    r.material.mainTexture = t ?? _defaultPlayerThrusterRamp;
+                }
+                foreach(Light l in _playerThrusterLights)
+                {
+                    l.color = c == Color.black ? _defaultPlayerThrusterColor : c;
+                }
             }
         }
     }
-    public void SetPlayerThrusterColor(Color c, Texture t = null)
-    {
-        if(_currentPlayerThrusterColor != c)
-        {
-            _currentPlayerThrusterColor = c;
-
-            foreach(MeshRenderer r in _playerThrusterRenderers)
-            {
-                r.material.mainTexture = t ?? _defaultPlayerThrusterRamp;
-            }
-            foreach(Light l in _playerThrusterLights)
-            {
-                l.color = c == Color.black ? _defaultPlayerThrusterColor : c;
-            }
-        }
-    }
-
 
     public void SubmergeInResource(RefuelingResource resource)
     {

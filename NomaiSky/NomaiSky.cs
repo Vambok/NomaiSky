@@ -31,8 +31,8 @@ public class NomaiSky : ModBehaviour {
         fogProbaIfAtmBig = 0.25f, //Atmosphere big enough is 50% chance
         cloudsProbaIfAtmBig = 0.2f,
         //If clouds:
-        cloudsGDProba = 0.2f,
-        cloudsQMProba = 0.2f, //If neither GD nor QM clouds: basic clouds
+        //cloudsGDProba = 0.2f,
+        //cloudsQMProba = 0.2f, //If neither GD nor QM clouds: transparent type clouds
         cloudsMaxSpeed = 30, //In degrees per second
         lightningProbaIfClouds = 0.25f,
         rainProbaIfCloudsAndWater = 0.8f,
@@ -45,7 +45,6 @@ public class NomaiSky : ModBehaviour {
         fuelAlcoholProba = 0.25f,
         fuelHydrogenProba = 0.1f,
         fuelStrangerProba = 0.1f; //If neither fuel will be Kerosene
-    //readonly string[] resourcesList = ["Kerosene", "Methane", "Alcohol", "Hydrogen", "StrangerFuel"];//TEMP (need a way to textures)
     ///<summary>How many more bodies could fit in an orbit span with maxBodies (>0 to prevent constant spacing when maxBodies is hit)</summary>
     const int orbitalMargin = 1;
     ///<summary>A rare prop is this many times more likely to spawn on the planet than on each of its moons</summary>
@@ -103,9 +102,12 @@ public class NomaiSky : ModBehaviour {
     float remainingFuel = maxFuel;
     const float warpDriveEfficiency = 1f;
     // FUEL TOOL:
-    //readonly Dictionary<string, (Color, Texture2D)> flameTypes;//TEMP (need a way to textures)
-    public Color32 jetpackColor;
-    public Color32 thrustersColor;
+    readonly string[] fuelNames = ["Methane", "Alcohol", "Hydrogen", "Strange Matter"];
+    Color32 jetpackColor;
+    string jetpackFuel;
+    Color32 thrustersColor;
+    string thrustersFuel;
+    readonly Dictionary<string, Texture2D> flameTextures = [];
     // GENERATION:
     readonly int galaxyName = 0;
     readonly List<(float esperance, int max, bool canRepeat, string prop)> rareProps = [];
@@ -284,12 +286,11 @@ public class NomaiSky : ModBehaviour {
             PlayerData.SetSettingsData(save);
             PlayerData.SaveSettings();
         }
-        /*/Store flames textures://TEMP (need a way to textures)
-        foreach(string fuelName in resourcesList) {
-            GameObject tempGo = Instantiate(Resources.Load("Assets/NomaiSky/" + fuelName + "Ocean.prefab") as GameObject);
-            flameTypes[fuelName] = (tempGo.GetComponent<RefuelingResource>().FlameColor, tempGo.GetComponent<RefuelingResource>().FlameTexture);
-            Destroy(tempGo);
-        }*/
+        //Store flames textures:
+        foreach(string fuelName in fuelNames) {
+            flameTextures[fuelName] = new Texture2D(1, 1);
+            ImageConversion.LoadImage(flameTextures[fuelName], File.ReadAllBytes(Path.Combine(ModHelper.Manifest.ModFolderPath, "assets", "images", "flames", fuelName.ToLower().Replace(' ','_') + ".png")));
+        }
         //Loading save data:
         string[] temp;
         ShipLogFactSave saveData = PlayerData.GetShipLogFactSave("NomaiSky_currentCenter");
@@ -315,12 +316,16 @@ public class NomaiSky : ModBehaviour {
             temp = saveData.id.Substring(5, saveData.id.Length - 6).Split(',');
             jetpackColor = new Color32(byte.Parse(temp[0]), byte.Parse(temp[1]), byte.Parse(temp[2]), byte.Parse(temp[3]));
         }
-        
+        saveData = PlayerData.GetShipLogFactSave("NomaiSky_jetpackFuel");
+        if(saveData != null) jetpackFuel = saveData.id;
+
         saveData = PlayerData.GetShipLogFactSave("NomaiSky_thrustersColor");
         if(saveData != null) {
             temp = saveData.id.Substring(5, saveData.id.Length - 6).Split(',');
             thrustersColor = new Color32(byte.Parse(temp[0]), byte.Parse(temp[1]), byte.Parse(temp[2]), byte.Parse(temp[3]));
         }
+        saveData = PlayerData.GetShipLogFactSave("NomaiSky_thrustersFuel");
+        if(saveData != null) thrustersFuel = saveData.id;
         //Some cleanup for old versions:
     }
     void SaveState() {
@@ -329,8 +334,14 @@ public class NomaiSky : ModBehaviour {
             PlayerData._currentGameSave.shipLogFactSaves["NomaiSky_remainingFuel"] = new ShipLogFactSave(remainingFuel.ToString(CultureInfo.InvariantCulture));
         }
         if(!otherModsSystems.ContainsKey(currentCenter)) {
-            PlayerData._currentGameSave.shipLogFactSaves["NomaiSky_jetpackColor"] = new ShipLogFactSave(jetpackColor.ToString());
-            PlayerData._currentGameSave.shipLogFactSaves["NomaiSky_thrustersColor"] = new ShipLogFactSave(thrustersColor.ToString());
+            if(jetpackFuel != null) {
+                PlayerData._currentGameSave.shipLogFactSaves["NomaiSky_jetpackColor"] = new ShipLogFactSave(jetpackColor.ToString());
+                PlayerData._currentGameSave.shipLogFactSaves["NomaiSky_jetpackFuel"] = new ShipLogFactSave(jetpackFuel);
+            }
+            if(thrustersFuel != null) {
+                PlayerData._currentGameSave.shipLogFactSaves["NomaiSky_thrustersColor"] = new ShipLogFactSave(thrustersColor.ToString());
+                PlayerData._currentGameSave.shipLogFactSaves["NomaiSky_thrustersFuel"] = new ShipLogFactSave(thrustersFuel);
+            }
         }
         PlayerData.SaveCurrentGame();
     }
@@ -787,8 +798,8 @@ public class NomaiSky : ModBehaviour {
                 //Sit at ship controls:
                 ship.cockpit.OnPressInteract();
                 //Set flames colors:
-                refuelingTool.SetPlayerThrusterColor(jetpackColor);
-                refuelingTool.SetShipThrusterColor(thrustersColor);
+                if(jetpackFuel != null) refuelingTool.SetThrusterColor(false, jetpackColor, flameTextures[jetpackFuel]);
+                if(thrustersFuel != null) refuelingTool.SetThrusterColor(true, thrustersColor, flameTextures[thrustersFuel]);
             }
             //Updates custom warp drive:
             if(ship.warp == null) ship.warp = ship.transform.gameObject.AddComponent<WarpController>();
@@ -1107,7 +1118,7 @@ public class NomaiSky : ModBehaviour {
             hasClouds = Random128.Rng.Proba(planetName + "Clouds") < cloudsProbaIfAtmBig;
             if(hasClouds) {
                 finalJson += "\t\"clouds\": {\n" +
-                "\t\t\"texturePath\": \"assets/images/clouds" + Random128.Rng.Range(0, 3) switch { 0 => "-cap.png", 1 => "-center.png", _ => ".png" } + "\",\n" +
+                "\t\t\"texturePath\": \"assets/images/clouds/clouds" + Random128.Rng.Range(0, 3) switch { 0 => "-cap.png", 1 => "-center.png", _ => ".png" } + "\",\n" +
                 "\t\t\"tint\": {\"r\": " + color.r + ", \"g\": " + color.g + ", \"b\": " + color.b + "},\n" +
                 "\t\t\"cloudsPrefab\": \"" + "transparent\",\n" + //Random128.Rng.Proba() switch { < cloudsGDProba => "giantsDeep", < cloudsGDProba + cloudsQMProba => "quantumMoon", _ => "basic" } + "\",\n" + //TEMP (need GD and QM textures)
                 "\t\t\"hasLightning\": " + (Random128.Rng.Proba(planetName + "Lightning") < lightningProbaIfClouds).ToString().ToLower() + ",\n" +
@@ -1440,6 +1451,17 @@ public class NomaiSky : ModBehaviour {
         else if(2 * v + s > 2.8f) modifier = "bright-";
         return modifier + baseName;
     }
+    public void SetFlameColor(Color32 color, string texture, bool ship) {
+        if(Array.IndexOf(fuelNames, texture) >= 0) {
+            if(ship) {
+                thrustersColor = color;
+                thrustersFuel = texture;
+            } else {
+                jetpackColor = color;
+                jetpackFuel = texture;
+            }
+        }
+    }
     /*string GetStylizedName(Color color) {
         Dictionary<string, string[]> StylizedColorNames = new() {
             { "deep-blue", ["midnight-hued", "abyssal-tinted"] },
@@ -1553,11 +1575,11 @@ public class NomaiSky : ModBehaviour {
 //  fix duplicate fuel tool on SolarSystem reentry
 //  allow space spawn in SolarSystem (and other mods)
 //  fix spawning sometime weird offset?
-//  save player/ship flames state between systems & games (need a way to access textures)
 //MAYBE?:
 //  correct textures, big planets gets higher res?
 //  fix floating point shaking
 //TO TEST:
+//  save player/ship flames state between systems & games
 //DONE:
 //  bigger referenceframevolume (entryradius)
 //  galactic key not found
