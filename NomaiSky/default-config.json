@@ -21,6 +21,10 @@
                 "Rings",
                 "None"
             ]
+        },
+        "Loading screen tips": {
+            "type": "toggle",
+            "value": "true"
         }
     }
 }

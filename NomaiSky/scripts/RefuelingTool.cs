@@ -216,10 +216,10 @@ public class RefuelingTool : OWItem
                     resource = hitInfo.collider.GetComponent<RefuelingResource>();
                 }
             }
-            if(resource != null)
-                _activatePrompt.SetText(TranslationHandler.GetTranslation("RefuelingTool_Prompt", TranslationHandler.TextType.UI) + " " + resource.Name + "   <CMD>");
-            else
+            if(resource == null || PlayerState.IsInsideShip())
                 _activatePrompt.SetText(TranslationHandler.GetTranslation("RefuelingTool_Prompt", TranslationHandler.TextType.UI) + "   <CMD>");
+            else
+                _activatePrompt.SetText(TranslationHandler.GetTranslation("RefuelingTool_Prompt", TranslationHandler.TextType.UI) + " " + resource.Name + "   <CMD>");
         }
         if(_toolActive)
         {
