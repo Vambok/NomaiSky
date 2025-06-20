@@ -12,6 +12,16 @@
                 "Distant system"
             ]
         },
+        "Difficulty (ship fuel capacity)": {
+            "type": "selector",
+            "value": "Medium",
+            "options": [
+                "Sandbox",
+                "Easy",
+                "Medium",
+                "Hard"
+            ]
+        },
         "Visited systems display type": {
             "type": "selector",
             "value": "Lines",

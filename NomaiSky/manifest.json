@@ -4,7 +4,7 @@
   "author": "Vambok, Trifid, Lezzlebit",
   "name": "Nomai's Sky",
   "uniqueName": "Vambok.NomaiSky",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "owmlVersion": "2.15.1",
   "dependencies": ["xen.NewHorizons"],
   "pathsToPreserve": ["planets", "systems"]

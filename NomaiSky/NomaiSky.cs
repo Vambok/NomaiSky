@@ -50,7 +50,6 @@ public class NomaiSky : ModBehaviour {
     const int orbitalMargin = 1;
     ///<summary>A rare prop is this many times more likely to spawn on the planet than on each of its moons</summary>
     const int planetPropWeight = 2;
-    const float maxFuel = 10000;
     const float warpDriveEfficiency = 1f; //The more efficient, the less fuel consumption
     const int mapRadius = 5;
     readonly float warpPower = 1f; // min 0.2 to max 1
@@ -104,7 +103,8 @@ public class NomaiSky : ModBehaviour {
     Vector3 entrySpeed;
     (int, int, int)? targetStar;
     bool wasAutopilotOn = false;
-    float remainingFuel = maxFuel;
+    int maxFuel = 10000;
+    float remainingFuel = 10000;
     // FUEL TOOL:
     Color32 jetpackColor;
     string jetpackFuel;
@@ -114,9 +114,9 @@ public class NomaiSky : ModBehaviour {
     // GENERATION:
     readonly int galaxyName = 0;
     readonly List<(float esperance, int max, bool canRepeat, string prop)> rareProps = [];
-    const string generationVersion = "0.4.0";//Changing this will cause a rebuild of all previously visited systems, increment only when changing the procedural generation!
+    const string generationVersion = "0.4.3";//Changing this will cause a rebuild of all previously visited systems, increment only when changing the procedural generation!
     // UTILS:
-    UnityEngine.UI.Text splashScreenText;
+    UnityEngine.UI.Text splashScreenText, splashScreenText2;
     readonly List<int> seenTexts = [];
     int lastLoad = 0;
     float timeOffset = 0;
@@ -281,6 +281,7 @@ public class NomaiSky : ModBehaviour {
                 splashScreenText.horizontalOverflow = HorizontalWrapMode.Wrap;
                 splashScreenText.fontSize = 30;
                 splashScreenText.GetComponent<RectTransform>().sizeDelta = new Vector2(-100, -100);
+                splashScreenText2 = Instantiate(textObj, GameObject.Find("SpinnerUI(Clone)").transform).GetComponent<UnityEngine.UI.Text>();
                 //GameObject.Find("New Game Object").GetComponent<Text>().font = (Font)Resources.GetBuiltinResource(typeof(Font), "Arial.ttf");
             }
         } else if(newScene == OWScene.SolarSystem) {
@@ -291,86 +292,86 @@ public class NomaiSky : ModBehaviour {
         /*string toto = Heightmaps.CreateHeightmap(Path.Combine(ModHelper.Manifest.ModFolderPath, "planets/heightmap")); //TEST
         ModHelper.Console.WriteLine("HM done! "+toto, MessageType.Success); //TEST*/
     }
-    void SetWaitingText() {//CUSTOMIZATION
-        if(ModHelper.Config.GetSettingsValue<bool>("Loading screen tips")) {
-            int temp;
-            if(numberFlew * numberWarped == 0) {
-                temp = UnityEngine.Random.Range(0, 5);
-                if(temp + numberFlew == 0) {
-                    splashScreenText.text = "You can travel to any star system by flying until you get there!";
-                    return;
-                } else if(numberWarped - temp == -4) {
-                    splashScreenText.text = "You can travel to any star system by warping with the galactic map!";
-                    return;
-                }
+    void SetWaitingText(bool active) {
+        splashScreenText.text = splashScreenText2.text = ((active && ModHelper.Config.GetSettingsValue<bool>("Loading screen tips")) ? ChooseWaitingText() : "");
+    }
+    string ChooseWaitingText() {//CUSTOMIZATION
+        int temp;
+        if(numberFlew * numberWarped == 0) {
+            temp = UnityEngine.Random.Range(0, 5);
+            if(temp + numberFlew == 0) {
+                return "You can travel to any star system by flying until you get there!";
+            } else if(numberWarped - temp == -4) {
+                return "You can travel to any star system by warping with the galactic map!";
             }
-            string[] waitingTexts = [
-                "These loading screens are <b>sooo</b> boring",
-                "The music in <color=purple>Nomai's Sky</color> was originally composed by <color=teal>Andrew Prahlow</color> for <color=green>Minecraft</color>",
-                "NMS systems are big because NMS systems are also big!",
-                //"Your warp drive is currently at <b>" + Mathf.CeilToInt(warpDriveEfficiency * 100) + "%</b> of its potential fuel efficiency",
-                //"Your warp drive can currently reach <b>" + Mathf.CeilToInt(warpPower * 100) + "%</b> of its potential range",
-                "Loading star shader. Please don't stare directly at it",
-                "The planets are aligning! <i>It's purely cosmetic, but still exciting</i>",
-                "Gravity calculations underway. Please remain grounded",
-                "Your ship is... spinning? But that's normal. <i>Probably</i>",
-                "Loading textures <i>(97% of them are just flat anyway)</i>",
-                "This specific loading tip is <b>not</b> to be trusted",
-                "Somewhere, a random number generator is deciding <i>your fate</i>",
-                "Planetary naming rights were sold to the lowest bidder",
-                "Yes, that tree was supposed to float like that. Definitely. That's... <i>gravity stuff</i>",
-                "Each loading screen extends the lifespan of a dying star. <i>You're welcome</i>",
-                "Deploying procedural chaos... Success rate: <i>acceptable</i>",
-                "The star system you are entering may already contain you",
-                "Each system is totally unique! <i>(and yet somehow every tree looks the same)</i>",
-                "Reality rendering. Please hold"];
-            string[] rareWaitingTexts = [
-                "Oh my... this system has an <b>incredibly rare</b> and <b>awesome</b> planet! ... Wait. Oh no sorry it's not <i>that</i> system, nevermind",
-                "If you read this, you're officially part of the QA team",
-                "If you see <color=#b57edc>Lezzlebit</color> or <color=#cc8899>Trifid</color>, tell them the other one ate their sandwich, not me",
-                "<i>I'm trapped in the devs' basement, writing these texts all day! Please send help!</i>",
-                "All your feature requests must be sent to <color=#cc8899>Trifid</color>! <i>(they'll be heard... but will they be implemented?)</i>",
-                "All your complaints must be sent to Sean Murray <i>(not the one from Bethesda, the one from Hello Games!)</i>",
-                //"<color=white>I think Gneiss might need help with something</color>",
-                "This message was removed from this build",
-                "Some truths cannot be loaded",
-                "<i>Ignorance is stability. Bugs are features. Lag is immersion</i>",
-                "<color=white>The end is never the end is never the end is never the end is never the end is never</color>",
-                "The cake is a <b>lie</b>"];
-            string[] ultraRareWaitingTexts = ["",
-                "This message was not supposed to load. If you're reading this it's already too late. You mu<i>^st</i><b>$%£@######</b>"];
-            ultraRareWaitingTexts[0] = "This text only had a 1 in <b>" + ((waitingTexts.Length + 2) * rareWaitingTexts.Length * ultraRareWaitingTexts.Length) + "</b> chance of appearing!";
+        }
+        string[] waitingTexts = [
+            "These loading screens are <size=35>sooo</size> boring",
+            "The music in <color=purple>Nomai's Sky</color> was originally composed by <color=teal>Andrew Prahlow</color> for <color=green>Minecraft</color>",
+            "NMS systems are big because NMS systems are also big!",
+            //"Your warp drive is currently at <size=35>" + Mathf.CeilToInt(warpDriveEfficiency * 100) + "%</size> of its potential fuel efficiency",
+            //"Your warp drive can currently reach <size=35>" + Mathf.CeilToInt(warpPower * 100) + "%</size> of its potential range",
+            "Loading star shader. Please don't stare directly at it",
+            "The planets are aligning! <color=orange>It's purely cosmetic, but still exciting</color>",
+            "Gravity calculations underway. Please remain grounded",
+            "Your ship is... spinning? But that's normal. <color=orange>Probably</color>",
+            "Loading textures <color=orange>(97% of them are just flat anyway)</color>",
+            "This specific loading tip is <size=35>not</size> to be trusted",
+            "Somewhere, a random number generator is deciding <color=orange>your fate</color>",
+            "Planetary naming rights were sold to the lowest bidder",
+            "Yes, that tree was supposed to float like that. Definitely. That's... <color=orange>gravity stuff</color>",
+            "Each loading screen extends the lifespan of a dying star. <color=orange>You're welcome</color>",
+            "Deploying procedural chaos... Success rate: <color=orange>acceptable</color>",
+            "The star system you are entering may already contain you",
+            "Each system is totally unique! <color=orange>(and yet somehow every tree looks the same)</color>",
+            "Reality rendering. Please hold"];
+        string[] rareWaitingTexts = [
+            "Oh my... this system has an <size=35>incredibly rare</size> and <size=35>awesome</size> planet! ... Wait. Oh no sorry it's not <color=orange>that</color> system, nevermind",
+            "If you read this, you're officially part of the QA team",
+            "If you see <color=#b57edc>Lezzlebit</color> or <color=#cc8899>Trifid</color>, tell them the other one ate their sandwich, not me",
+            "<color=orange>I'm trapped in the devs' basement, writing these texts all day! Please send help!</color>",
+            "All your feature requests must be sent to <color=#cc8899>Trifid</color>! <color=orange>(they'll be heard... but will they be implemented?)</color>",
+            "All your complaints must be sent to Sean Murray <color=orange>(not the one from Bethesda, the one from Hello Games!)</color>",
+            //"<color=white>I think Gneiss might need help with something</color>",
+            "This message was removed from this build",
+            "Some truths cannot be loaded",
+            "<color=orange>Beta version is stability. Bugs are features. Lag is immersion</color>",
+            "<color=white>The end is never the end is never the end is never the end is never the end is never</color>",
+            "The cake is a <size=35>lie</size>"];
+        string[] ultraRareWaitingTexts = ["",
+            "This message was not supposed to load. If you're reading this it's already too late. You mu<color=orange>^st</color><size=35>$%£@######</size>"];
+        ultraRareWaitingTexts[0] = "This text only had a 1 in <size=35>" + ((waitingTexts.Length + 2) * rareWaitingTexts.Length * ultraRareWaitingTexts.Length) + "</size> chance of appearing!";
+        temp = UnityEngine.Random.Range(-3, waitingTexts.Length);
+        if(seenTexts.Contains(temp)) {
             temp = UnityEngine.Random.Range(-3, waitingTexts.Length);
-            if(seenTexts.Contains(temp)) {
-                temp = UnityEngine.Random.Range(-3, waitingTexts.Length);
-                if(seenTexts.Contains(temp)) temp = UnityEngine.Random.Range(-3, waitingTexts.Length);
-            }
-            if(temp < -2) splashScreenText.text = "The system was generated "
-                    + (new[] { "in 0.001s, but we add some waiting time for <i>vibes</i>",
-                    "in 0.002s, but we add some waiting time to <i>build tension</i>",
-                    "in 0.003s, but we add some time to <i>raise your expectations</i>",
-                    "in 0.004s, but we give you some time to read this text",
-                    "in 0.005s, but we make you wait for <i>dramatic effect</i>",
-                    "in 0.006s, but we slowed it down for <i>style points</i>",
-                    "in 0.007s, but we give you some time to <i>feel the moment</i>",
-                    "in 0.008s, but the loading screen insisted on being <i>theatrical</i>",
-                    "in 0.009s, but we added time to make it more realistic",
-                    "faster than light, <i>but your SSD isn't</i>" })[UnityEngine.Random.Range(0, 10)];
-            if(temp < -1) splashScreenText.text = (new[] { "This ", "The current " })[UnityEngine.Random.Range(0, 2)]
-                        + (new[] { "loading text ", "message ", "text " })[UnityEngine.Random.Range(0, 3)]
-                        + (new[] { "was ", "has been ", "might have been ", "is " })[UnityEngine.Random.Range(0, 4)]
-                        + (new[] { "procedurally ", "randomly ", "automatically ", "" })[UnityEngine.Random.Range(0, 4)]
-                        + (new[] { "generated ", "written ", "made ", "crafted ", "altered " })[UnityEngine.Random.Range(0, 5)]
-                        + (new[] { "for ", "to achieve ", "to reach " })[UnityEngine.Random.Range(0, 3)]
-                        + (new[] { "absolute fun", "max immersion", "infinite gameplay", "peak satisfaction" })[UnityEngine.Random.Range(0, 4)];
-            else if(temp < 0) {
-                temp = UnityEngine.Random.Range(-1, rareWaitingTexts.Length);
-                splashScreenText.text = (temp < 0 ? ultraRareWaitingTexts[UnityEngine.Random.Range(0, ultraRareWaitingTexts.Length)] : rareWaitingTexts[temp]);
-            } else {
-                if(!seenTexts.Contains(temp)) seenTexts.Add(temp);
-                splashScreenText.text = waitingTexts[temp];
-            }
-        } else splashScreenText.text = "";
+            if(seenTexts.Contains(temp)) temp = UnityEngine.Random.Range(-3, waitingTexts.Length);
+        }
+        if(temp < -2) return "The system was generated "
+                + (new[] { "in 0.001s, but we add some waiting time for <color=orange>vibes</color>",
+                "in 0.002s, but we add some waiting time to <color=orange>build tension</color>",
+                "in 0.003s, but we add some time to <color=orange>raise your expectations</color>",
+                "in 0.004s, but we give you some time to read this text",
+                "in 0.005s, but we make you wait for <color=orange>dramatic effect</color>",
+                "in 0.006s, but we slowed it down for <color=orange>style points</color>",
+                "in 0.007s, but we give you some time to <color=orange>feel the moment</color>",
+                "in 0.008s, but the loading screen insisted on being <color=orange>theatrical</color>",
+                "in 0.009s, but we added time to make it more realistic",
+                "faster than light, <color=orange>but your SSD isn't</color>" })[UnityEngine.Random.Range(0, 10)];
+        if(temp < -1) return (new[] { "<color=purple>1010110</color> ", "This ", "The current ", "That ", "The present " })[UnityEngine.Random.Range(0, 5)]
+                    + (new[] { "<color=purple>1001111</color> ", "loading tip ", "message ", "text ", "sentence " })[UnityEngine.Random.Range(0, 5)]
+                    + (new[] { "<color=purple>1001001 1000100</color> ", "was ", "has been ", "might have been ", "is " })[UnityEngine.Random.Range(0, 5)]
+                    + (new[] { "<color=purple>1001101</color> ", "procedurally ", "randomly ", "automatically ", "" })[UnityEngine.Random.Range(0, 5)]
+                    + (new[] { "<color=purple>1001111</color> ", "generated ", "written ", "made ", "crafted " })[UnityEngine.Random.Range(0, 5)]
+                    + (new[] { "<color=purple>1010100 1001000</color> ", "for ", "to achieve ", "to reach ", "in the name of " })[UnityEngine.Random.Range(0, 5)]
+                    + (new[] { "<color=purple>1000101</color> ", "absolute ", "max ", "infinite ", "peak " })[UnityEngine.Random.Range(0, 5)]
+                    + (new[] { "<color=purple>1010010</color> ", "fun", "immersion", "gameplay", "satisfaction" })[UnityEngine.Random.Range(0, 5)];
+        else if(temp < 0) {
+            temp = UnityEngine.Random.Range(-1, rareWaitingTexts.Length);
+            return (temp < 0 ? ultraRareWaitingTexts[UnityEngine.Random.Range(0, ultraRareWaitingTexts.Length)] : rareWaitingTexts[temp]);
+        } else {
+            if(!seenTexts.Contains(temp)) seenTexts.Add(temp);
+            return waitingTexts[temp];
+        }
     }
     void Update() {
         if(isWarping) {
@@ -378,6 +379,7 @@ public class NomaiSky : ModBehaviour {
             if(test > lastLoad) {
                 lastLoad = test;
                 splashScreenText.text += ".";
+                splashScreenText2.text += ".";
             }
         }
     }
@@ -386,6 +388,11 @@ public class NomaiSky : ModBehaviour {
     public override void Configure(IModConfig config) {
         if(LoadManager.GetCurrentScene() == OWScene.SolarSystem) {
             TravelLinesVisibility(config.GetSettingsValue<string>("Visited systems display type"));
+            maxFuel = config.GetSettingsValue<string>("Difficulty (ship fuel capacity)") switch {
+                "Easy" => 50000,
+                "Medium" => 10000,
+                "Hard" => 5000,
+                _ => int.MaxValue };
         }
     }
     void LoadState() {
@@ -423,8 +430,15 @@ public class NomaiSky : ModBehaviour {
         saveData = PlayerData.GetShipLogFactSave("NomaiSky_warpedWithMap");
         if(saveData != null) numberWarped = int.Parse(saveData.id);
 
+        maxFuel = ModHelper.Config.GetSettingsValue<string>("Difficulty (ship fuel capacity)") switch {
+            "Easy" => 50000,
+            "Medium" => 10000,
+            "Hard" => 5000,
+            _ => int.MaxValue
+        };
         saveData = PlayerData.GetShipLogFactSave("NomaiSky_remainingFuel");
         if(saveData != null) remainingFuel = float.Parse(saveData.id, CultureInfo.InvariantCulture);
+        if(remainingFuel > maxFuel) remainingFuel = maxFuel;
 
         saveData = PlayerData.GetShipLogFactSave("NomaiSky_jetpackColor");
         if(saveData != null) {
@@ -443,21 +457,25 @@ public class NomaiSky : ModBehaviour {
         if(saveData != null) thrustersFuel = saveData.id;
     }
     void SaveState() {
-        PlayerData._currentGameSave.shipLogFactSaves["NomaiSky_flewByShip"] = new ShipLogFactSave(numberFlew + "");
-        PlayerData._currentGameSave.shipLogFactSaves["NomaiSky_warpedWithMap"] = new ShipLogFactSave(numberWarped + "");
+        PlayerData._currentGameSave.shipLogFactSaves["NomaiSky_currentCenter"] = new ShipLogFactSave(currentCenter.ToString());
+        if(!known.Contains(currentCenter)) {
+            known.Add(currentCenter);
+            ShipLogFactSave saveData = PlayerData.GetShipLogFactSave("NomaiSky_visitedSystems");
+            PlayerData._currentGameSave.shipLogFactSaves["NomaiSky_visitedSystems"] = (saveData != null ? new ShipLogFactSave(saveData.id + currentCenter.ToString()) : new ShipLogFactSave(currentCenter.ToString()));
+        }
+        PlayerData._currentGameSave.shipLogFactSaves["NomaiSky_flewByShip"] = new ShipLogFactSave(numberFlew.ToString());
+        PlayerData._currentGameSave.shipLogFactSaves["NomaiSky_warpedWithMap"] = new ShipLogFactSave(numberWarped.ToString());
         if(ship.resources != null) {
             remainingFuel = ship.resources.GetFuel();
             PlayerData._currentGameSave.shipLogFactSaves["NomaiSky_remainingFuel"] = new ShipLogFactSave(remainingFuel.ToString(CultureInfo.InvariantCulture));
         }
-        if(!otherModsSystems.ContainsKey(currentCenter)) {
-            if(jetpackFuel != null) {
-                PlayerData._currentGameSave.shipLogFactSaves["NomaiSky_jetpackColor"] = new ShipLogFactSave(jetpackColor.ToString());
-                PlayerData._currentGameSave.shipLogFactSaves["NomaiSky_jetpackFuel"] = new ShipLogFactSave(jetpackFuel);
-            }
-            if(thrustersFuel != null) {
-                PlayerData._currentGameSave.shipLogFactSaves["NomaiSky_thrustersColor"] = new ShipLogFactSave(thrustersColor.ToString());
-                PlayerData._currentGameSave.shipLogFactSaves["NomaiSky_thrustersFuel"] = new ShipLogFactSave(thrustersFuel);
-            }
+        if(jetpackFuel != null) {
+            PlayerData._currentGameSave.shipLogFactSaves["NomaiSky_jetpackColor"] = new ShipLogFactSave(jetpackColor.ToString());
+            PlayerData._currentGameSave.shipLogFactSaves["NomaiSky_jetpackFuel"] = new ShipLogFactSave(jetpackFuel);
+        }
+        if(thrustersFuel != null) {
+            PlayerData._currentGameSave.shipLogFactSaves["NomaiSky_thrustersColor"] = new ShipLogFactSave(thrustersColor.ToString());
+            PlayerData._currentGameSave.shipLogFactSaves["NomaiSky_thrustersFuel"] = new ShipLogFactSave(thrustersFuel);
         }
         //Cleanup of previous versions' keys:
         //PlayerData._currentGameSave.shipLogFactSaves.Remove("NomaiSky_currentCenter");
@@ -470,15 +488,6 @@ public class NomaiSky : ModBehaviour {
         //PlayerData._currentGameSave.shipLogFactSaves.Remove("NomaiSky_thrustersColor");
         //PlayerData._currentGameSave.shipLogFactSaves.Remove("NomaiSky_thrustersFuel");
         PlayerData.SaveCurrentGame();
-    }
-    void SaveLastVisit((int, int, int) coords) {
-        lastVisited = coords;
-        PlayerData._currentGameSave.shipLogFactSaves["NomaiSky_currentCenter"] = new ShipLogFactSave(coords.ToString());
-    }
-    void RecordVisit((int, int, int) coords) {
-        known.Add(coords);
-        ShipLogFactSave saveData = PlayerData.GetShipLogFactSave("NomaiSky_visitedSystems");
-        PlayerData._currentGameSave.shipLogFactSaves["NomaiSky_visitedSystems"] = (saveData != null ? new ShipLogFactSave(saveData.id + coords.ToString()) : new ShipLogFactSave(coords.ToString()));
     }
 
     // INITIALISATION:
@@ -504,7 +513,7 @@ public class NomaiSky : ModBehaviour {
             _ => (0, 0, 0),
         };
         if(newSystem != (0, 0, 0)) WarpToSystem(newSystem);
-        else SaveLastVisit(newSystem);
+        else lastVisited = currentCenter = newSystem;
     }
 
     // GALACTIC MAP:
@@ -821,26 +830,23 @@ public class NomaiSky : ModBehaviour {
             }
         }
     }
-    void WarpToSystem((int, int, int) newCoords) {
+    void WarpToSystem((int x, int y, int z) newCoords) {
         if(!isWarping) {
             ModHelper.Console.WriteLine("Warping to " + newCoords);//LOG
             isWarping = true;
-            SetWaitingText();
+            SetWaitingText(true);
             timeOffset = Time.realtimeSinceStartup;
-            SaveLastVisit(newCoords);
-            if(ship.resources != null) {
-                SaveState();
-                Locator.GetToolModeSwapper().GetItemCarryTool().DropItemInstantly(null, Locator.GetShipTransform());
-            }
-            bool waitForWrite = false;
             (int x, int y, int z) = currentCenter;
-            currentCenter = newCoords;
+            lastVisited = currentCenter = newCoords;
+            SaveState();
+            if(ship.resources != null) Locator.GetToolModeSwapper().GetItemCarryTool().DropItemInstantly(null, Locator.GetShipTransform());
+            bool waitForWrite = false;
             if(!visited.Contains(newCoords)) {
-                DictUpdate(currentCenter.x - x, currentCenter.y - y, currentCenter.z - z);
+                DictUpdate(newCoords.x - x, newCoords.y - y, newCoords.z - z);
                 if(!otherModsSystems.ContainsKey(newCoords)) {
-                    Random128.Initialize(galaxyName, currentCenter.x, currentCenter.y, currentCenter.z);
+                    Random128.Initialize(galaxyName, newCoords.x, newCoords.y, newCoords.z);
                     StarInitializator(out string starName, out float radius, out Color32 starColor);
-                    string systemPath = Path.Combine(ModHelper.Manifest.ModFolderPath, "systems", "NomaiSky_" + galaxyName + "-" + currentCenter.x + "-" + currentCenter.y + "-" + currentCenter.z + ".json");
+                    string systemPath = Path.Combine(ModHelper.Manifest.ModFolderPath, "systems", "NomaiSky_" + galaxyName + "-" + newCoords.x + "-" + newCoords.y + "-" + newCoords.z + ".json");
                     waitForWrite = true;
                     if(File.Exists(systemPath)) {
                         string[] split = File.ReadAllText(systemPath).Split(["\"version\":\""], 2, StringSplitOptions.None);
@@ -858,7 +864,6 @@ public class NomaiSky : ModBehaviour {
                         }
                     }
                 }
-                if(!known.Contains(newCoords)) RecordVisit(newCoords);
                 NewHorizons.CreatePlanet("{\"name\": \"Bel-O-Kan of " + galacticMap[currentCenter].starName + "\",\"$schema\": \"https://raw.githubusercontent.com/Outer-Wilds-New-Horizons/new-horizons/main/NewHorizons/Schemas/body_schema.json\",\"starSystem\": \"" + galacticMap[currentCenter].name + "\",\"Base\": {\"groundSize\": 50, \"surfaceSize\": 50, \"surfaceGravity\": 0},\"Orbit\": {\"showOrbitLine\": false,\"semiMajorAxis\": " + (systemRadius * (1 + 2.83f * mapRadius) / 5f).ToString(CultureInfo.InvariantCulture) + ",\"primaryBody\": \"" + galacticMap[currentCenter].starName + "\"},\"ShipLog\": {\"mapMode\": {\"remove\": true}}}", Instance);
                 visited.Add(newCoords);
             }
@@ -911,6 +916,8 @@ public class NomaiSky : ModBehaviour {
             //Set custom maxFuel unless Resource Management is enabled:
             if(!hasRM) ship.resources._maxFuel = maxFuel;
             //Keep current fuel level:
+            if(maxFuel > 999999) remainingFuel = maxFuel;
+            else if(remainingFuel > ship.resources._maxFuel) remainingFuel = ship.resources._maxFuel;
             if(currentCenter != (0, 0, 0)) ship.resources.SetFuel(remainingFuel);
             else ship.resources.SetFuel(maxFuel);//Thanks Slate!
             if(!otherModsSystems.ContainsKey(currentCenter)) {
@@ -934,7 +941,7 @@ public class NomaiSky : ModBehaviour {
                 //Set flames colors:
                 if(jetpackFuel != null && flameTextures.ContainsKey(jetpackFuel)) refuelingTool.SetThrusterColor(false, jetpackColor, flameTextures[jetpackFuel]);
                 if(thrustersFuel != null && flameTextures.ContainsKey(thrustersFuel)) refuelingTool.SetThrusterColor(true, thrustersColor, flameTextures[thrustersFuel]);
-            }
+            } else thrustersFuel = jetpackFuel = null;
             //Updates custom warp drive:
             if(ship.warp == null) ship.warp = ship.transform.gameObject.AddComponent<WarpController>();
             ship.warp.currentOffset = galacticMap[currentCenter].offset;
@@ -942,7 +949,7 @@ public class NomaiSky : ModBehaviour {
             GenerateNeighborhood();
             ModHelper.Console.WriteLine("Loaded into " + galacticMap[currentCenter].starName + " (" + systemName + ")! Current galaxy: " + galaxyName, MessageType.Success);//LOG
             isWarping = false;
-            splashScreenText.text = "";
+            SetWaitingText(false);
         }, 3);
     }
 
@@ -1706,13 +1713,13 @@ public class NomaiSky : ModBehaviour {
 //      add mysterious artefacts (one / 10 systems) that increase warpPower towards 1
 //      add signals to rare scatter
 //      Gneiss banjo quest
-//          correct scatter function (sample consistency)
 //  fix duplicate fuel tool on SolarSystem reentry
 //  allow space spawn in SolarSystem (and other mods)
 //  fix spawning sometime weird offset?
 //MAYBE?:
 //  correct textures, big planets gets higher res?
 //  fix floating point shaking
+//  correct scatter function (sample consistency)
 //TO TEST:
 //DONE:
 //  bigger referenceframevolume (entryradius)
@@ -1768,3 +1775,4 @@ public class NomaiSky : ModBehaviour {
 //  message on warp loading (to warn for freeze)
 //  save player/ship flames state between systems & games
 //  add system change wait screen waiting messages trivia (if never travel or warp, proba of "you can also...")
+//  add difficulty config (maxFuel)

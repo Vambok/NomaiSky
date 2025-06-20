@@ -76,19 +76,44 @@ static class Heightmaps {
         byte currentByte = 100;
         byte lowestByte = 255;
         byte highestByte = 0;
+        byte latestPoint = 0;
         for(int j = 0;j < baseRes;j++) {
             for(int i = 0;i < hmWidth;i++) {
-                if(sampleSet[i, j] != Vector3.zero) currentByte = HeightGenerator(sampleSet[i, j] * planetRadius / 10/*tweak this factor till frequences are great*/);
+                if(sampleSet[i, j] != Vector3.zero) {
+                    currentByte = HeightGenerator(sampleSet[i, j] * planetRadius / 10/*tweak this factor till frequences are great*/);
+                    latestPoint = 255;
+                    finalData[(i + j * hmWidth) * 4 + 1] = currentByte;
+                    finalData[(i + j * hmWidth) * 4 + 2] = currentByte;
+                }
                 finalData[(i + j * hmWidth) * 4] = currentByte;
-                finalData[(i + j * hmWidth) * 4 + 1] = currentByte;
-                finalData[(i + j * hmWidth) * 4 + 2] = currentByte;
-                finalData[(i + j * hmWidth) * 4 + 3] = 255;
+                finalData[(i + j * hmWidth) * 4 + 3] = latestPoint;
                 dataTex[(i + j * hmWidth) * 4] = color.r;//(byte)((color.r + data[i]) / 2);
                 dataTex[(i + j * hmWidth) * 4 + 1] = color.g;//(byte)((color.g + data[i]) / 2);
                 dataTex[(i + j * hmWidth) * 4 + 2] = color.b;//(byte)((color.b + data[i]) / 2);
                 dataTex[(i + j * hmWidth) * 4 + 3] = 255;
                 if(currentByte < lowestByte) lowestByte = currentByte;
                 if(currentByte > highestByte) highestByte = currentByte;
+                if(latestPoint > 0) latestPoint--;
+            }
+        }
+        currentByte = 100;
+        latestPoint = 0;
+        byte otherAlpha;
+        byte averageValue;
+        for(int j = baseRes - 1;j >= 0;j--) {
+            for(int i = hmWidth - 1;i >= 0;i--) {
+                if(sampleSet[i, j] != Vector3.zero) {
+                    currentByte = finalData[(i + j * hmWidth) * 4];
+                    latestPoint = 255;
+                } else {
+                    otherAlpha = finalData[(i + j * hmWidth) * 4 + 3];
+                    averageValue = (byte)((currentByte * latestPoint + finalData[(i + j * hmWidth) * 4] * otherAlpha + 100) / (otherAlpha + latestPoint + 1));
+                    finalData[(i + j * hmWidth) * 4] = averageValue;
+                    finalData[(i + j * hmWidth) * 4 + 1] = averageValue;
+                    finalData[(i + j * hmWidth) * 4 + 2] = averageValue;
+                    finalData[(i + j * hmWidth) * 4 + 3] = 255;
+                }
+                if(latestPoint > 0) latestPoint--;
             }
         }
         lowestPoint = lowestByte / 255f;
