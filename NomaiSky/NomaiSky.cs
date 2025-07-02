@@ -11,7 +11,7 @@ using UnityEngine;//
 namespace NomaiSky;
 public class NomaiSky : ModBehaviour {
     // CUSTOMIZATION PARAMETERS:
-    const int minStarRadius = 1600,
+    const int minStarRadius = 1000,
         maxStarRadius = 6400,
         minPlanetSqrtRadius = 7, //Never less than 3!
         maxPlanetSqrtRadius = 31,
@@ -20,9 +20,11 @@ public class NomaiSky : ModBehaviour {
         maxPlanets = 8,
         maxMoons = 5;
     const float tidalLockProba = 0.2f,
-        waterProba = 0.1f,
+        waterProbaInHZ = 0.5f,
+        waterProbaInSemiHZ = 0.2f,
+        waterProbaOutsideHZ = 0f,
         oxygenProbaIfWater = 0.75f,
-        oxygenProbaNoWater = 0.5f,
+        oxygenProbaNoWater = 0.25f,
         //If oxygen:
         treeProbaIfOxygen = 0.5f,
         meanNbBigTrees = 30, //Mean number of trees per square kilometer
@@ -45,7 +47,7 @@ public class NomaiSky : ModBehaviour {
         fuelAlcoholProba = 0.25f,
         fuelHydrogenProba = 0.1f,
         fuelStrangerProba = 0.1f; //If neither fuel will be Kerosene
-    readonly string[] fuelNames = ["Methane", "Alcohol", "Hydrogen", "Strange Matter"];
+    readonly string[] fuelNames = ["Kerosene", "Methane", "Alcohol", "Hydrogen", "Strange Matter"];
     ///<summary>How many more bodies could fit in an orbit span with maxBodies (>0 to prevent constant spacing when maxBodies is hit)</summary>
     const int orbitalMargin = 1;
     ///<summary>A rare prop is this many times more likely to spawn on the planet than on each of its moons</summary>
@@ -293,7 +295,7 @@ public class NomaiSky : ModBehaviour {
         ModHelper.Console.WriteLine("HM done! "+toto, MessageType.Success); //TEST*/
     }
     void SetWaitingText(bool active) {
-        splashScreenText.text = splashScreenText2.text = ((active && ModHelper.Config.GetSettingsValue<bool>("Loading screen tips")) ? ChooseWaitingText() : "");
+        splashScreenText.text = splashScreenText2.text = ((active && ModHelper.Config.GetSettingsValue<bool>("Loading_tips")) ? ChooseWaitingText() : "");
     }
     string ChooseWaitingText() {//CUSTOMIZATION
         int temp;
@@ -306,53 +308,53 @@ public class NomaiSky : ModBehaviour {
             }
         }
         string[] waitingTexts = [
-            "These loading screens are <size=35>sooo</size> boring",
+            "These loading screens are <color=orange>sooo</color> boring",
             "The music in <color=purple>Nomai's Sky</color> was originally composed by <color=teal>Andrew Prahlow</color> for <color=green>Minecraft</color>",
             "NMS systems are big because NMS systems are also big!",
-            //"Your warp drive is currently at <size=35>" + Mathf.CeilToInt(warpDriveEfficiency * 100) + "%</size> of its potential fuel efficiency",
-            //"Your warp drive can currently reach <size=35>" + Mathf.CeilToInt(warpPower * 100) + "%</size> of its potential range",
+            //"Your warp drive is currently at <color=orange>" + Mathf.CeilToInt(warpDriveEfficiency * 100) + "%</color> of its potential fuel efficiency",
+            //"Your warp drive can currently reach <color=orange>" + Mathf.CeilToInt(warpPower * 100) + "%</color> of its potential range",
             "Loading star shader. Please don't stare directly at it",
-            "The planets are aligning! <color=orange>It's purely cosmetic, but still exciting</color>",
+            "The planets are aligning! (It's purely cosmetic, but still exciting)",
             "Gravity calculations underway. Please remain grounded",
-            "Your ship is... spinning? But that's normal. <color=orange>Probably</color>",
-            "Loading textures <color=orange>(97% of them are just flat anyway)</color>",
-            "This specific loading tip is <size=35>not</size> to be trusted",
-            "Somewhere, a random number generator is deciding <color=orange>your fate</color>",
+            "Your ship is... spinning? But that's normal. Probably",
+            "Loading textures (97% of them are just flat anyway)",
+            "This specific loading tip is <color=orange>not</color> to be trusted",
+            "Somewhere, a random number generator is deciding your fate",
             "Planetary naming rights were sold to the lowest bidder",
-            "Yes, that tree was supposed to float like that. Definitely. That's... <color=orange>gravity stuff</color>",
-            "Each loading screen extends the lifespan of a dying star. <color=orange>You're welcome</color>",
-            "Deploying procedural chaos... Success rate: <color=orange>acceptable</color>",
+            "Yes, that tree was supposed to float like that. Definitely. That's... gravity stuff",
+            "Each loading screen extends the lifespan of a dying star. You're welcome",
+            "Deploying procedural chaos... Success rate: acceptable",
             "The star system you are entering may already contain you",
-            "Each system is totally unique! <color=orange>(and yet somehow every tree looks the same)</color>",
+            "Each system is totally unique! (and yet somehow every tree looks the same)",
             "Reality rendering. Please hold"];
         string[] rareWaitingTexts = [
-            "Oh my... this system has an <size=35>incredibly rare</size> and <size=35>awesome</size> planet! ... Wait. Oh no sorry it's not <color=orange>that</color> system, nevermind",
+            "Oh my... this system has an <color=orange>incredibly rare</color> and <color=orange>awesome</color> planet! ... Wait. Oh no sorry it's not <color=orange>that</color> system, nevermind",
             "If you read this, you're officially part of the QA team",
             "If you see <color=#b57edc>Lezzlebit</color> or <color=#cc8899>Trifid</color>, tell them the other one ate their sandwich, not me",
-            "<color=orange>I'm trapped in the devs' basement, writing these texts all day! Please send help!</color>",
-            "All your feature requests must be sent to <color=#cc8899>Trifid</color>! <color=orange>(they'll be heard... but will they be implemented?)</color>",
+            "<color=yellow>I'm trapped in the devs' basement, writing these texts all day! Please send help!</color>",
+            "All your feature requests must be sent to <color=#cc8899>Trifid</color>! (they'll be heard... but will they be implemented?)",
             "All your complaints must be sent to Sean Murray <color=orange>(not the one from Bethesda, the one from Hello Games!)</color>",
             //"<color=white>I think Gneiss might need help with something</color>",
             "This message was removed from this build",
             "Some truths cannot be loaded",
-            "<color=orange>Beta version is stability. Bugs are features. Lag is immersion</color>",
+            "<color=yellow>Beta version is stability. Bugs are features. Lag is immersion</color>",
             "<color=white>The end is never the end is never the end is never the end is never the end is never</color>",
-            "The cake is a <size=35>lie</size>"];
+            "<color=yellow>The cake is a lie</color>"];
         string[] ultraRareWaitingTexts = ["",
-            "This message was not supposed to load. If you're reading this it's already too late. You mu<color=orange>^st</color><size=35>$%£@######</size>"];
-        ultraRareWaitingTexts[0] = "This text only had a 1 in <size=35>" + ((waitingTexts.Length + 2) * rareWaitingTexts.Length * ultraRareWaitingTexts.Length) + "</size> chance of appearing!";
+            "This message was not supposed to load. If you're reading this it's already too late. You mu<color=orange>^st</color><color=purple>$%£@######</color>"];
+        ultraRareWaitingTexts[0] = "This text only had a 1 in <color=orange>" + ((waitingTexts.Length + 2) * rareWaitingTexts.Length * ultraRareWaitingTexts.Length) + "</color> chance of appearing!";
         temp = UnityEngine.Random.Range(-3, waitingTexts.Length);
         if(seenTexts.Contains(temp)) {
             temp = UnityEngine.Random.Range(-3, waitingTexts.Length);
             if(seenTexts.Contains(temp)) temp = UnityEngine.Random.Range(-3, waitingTexts.Length);
         }
         if(temp < -2) return "The system was generated "
-                + (new[] { "in 0.001s, but we add some waiting time for <color=orange>vibes</color>",
-                "in 0.002s, but we add some waiting time to <color=orange>build tension</color>",
-                "in 0.003s, but we add some time to <color=orange>raise your expectations</color>",
+                + (new[] { "in 0.001s, but we add some waiting time for vibes",
+                "in 0.002s, but we add some waiting time to build tension",
+                "in 0.003s, but we add some time to raise your expectations",
                 "in 0.004s, but we give you some time to read this text",
                 "in 0.005s, but we make you wait for <color=orange>dramatic effect</color>",
-                "in 0.006s, but we slowed it down for <color=orange>style points</color>",
+                "in 0.006s, but we slowed it down for style points",
                 "in 0.007s, but we give you some time to <color=orange>feel the moment</color>",
                 "in 0.008s, but the loading screen insisted on being <color=orange>theatrical</color>",
                 "in 0.009s, but we added time to make it more realistic",
@@ -387,8 +389,8 @@ public class NomaiSky : ModBehaviour {
     // SAVE & CONFIG UTILS:
     public override void Configure(IModConfig config) {
         if(LoadManager.GetCurrentScene() == OWScene.SolarSystem) {
-            TravelLinesVisibility(config.GetSettingsValue<string>("Visited systems display type"));
-            maxFuel = config.GetSettingsValue<string>("Difficulty (ship fuel capacity)") switch {
+            TravelLinesVisibility(config.GetSettingsValue<string>("Visited_display"));
+            maxFuel = config.GetSettingsValue<string>("Difficulty") switch {
                 "Easy" => 50000,
                 "Medium" => 10000,
                 "Hard" => 5000,
@@ -404,9 +406,9 @@ public class NomaiSky : ModBehaviour {
             PlayerData.SaveSettings();
         }
         //Store flames textures:
-        foreach(string fuelName in fuelNames) {
-            flameTextures[fuelName] = new Texture2D(1, 1);
-            ImageConversion.LoadImage(flameTextures[fuelName], File.ReadAllBytes(Path.Combine(ModHelper.Manifest.ModFolderPath, "assets", "images", "flames", fuelName.ToLower().Replace(' ','_') + ".png")));
+        for(int i = 1;i < fuelNames.Length;i++) {
+            flameTextures[fuelNames[i]] = new Texture2D(1, 1);
+            ImageConversion.LoadImage(flameTextures[fuelNames[i]], File.ReadAllBytes(Path.Combine(ModHelper.Manifest.ModFolderPath, "assets", "images", "flames", fuelNames[i].ToLower().Replace(' ','_') + ".png")));
         }
         //Loading save data:
         string[] temp;
@@ -430,7 +432,7 @@ public class NomaiSky : ModBehaviour {
         saveData = PlayerData.GetShipLogFactSave("NomaiSky_warpedWithMap");
         if(saveData != null) numberWarped = int.Parse(saveData.id);
 
-        maxFuel = ModHelper.Config.GetSettingsValue<string>("Difficulty (ship fuel capacity)") switch {
+        maxFuel = ModHelper.Config.GetSettingsValue<string>("Difficulty") switch {
             "Easy" => 50000,
             "Medium" => 10000,
             "Hard" => 5000,
@@ -506,7 +508,7 @@ public class NomaiSky : ModBehaviour {
     }
     void LoadCurrentSystem() {
         ModHelper.Console.WriteLine("Loading system...");//LOG
-        (int, int, int) newSystem = ModHelper.Config.GetSettingsValue<string>("Star system to start the game in") switch {
+        (int, int, int) newSystem = ModHelper.Config.GetSettingsValue<string>("Entry_system") switch {
             "Last visited system" => lastVisited,
             "Random system" => (UnityEngine.Random.Range(-4 * mapRadius, 4 * mapRadius + 1), UnityEngine.Random.Range(-4 * mapRadius, 4 * mapRadius + 1), UnityEngine.Random.Range(-4 * mapRadius, 4 * mapRadius + 1)),
             "Distant system" => (UnityEngine.Random.Range(4 * mapRadius + 1, 40 * mapRadius + 1) * (int)Mathf.Sign(UnityEngine.Random.Range(-1, 1)), UnityEngine.Random.Range(4 * mapRadius + 1, 40 * mapRadius + 1) * (int)Mathf.Sign(UnityEngine.Random.Range(-1, 1)), UnityEngine.Random.Range(4 * mapRadius + 1, 40 * mapRadius + 1) * (int)Mathf.Sign(UnityEngine.Random.Range(-1, 1))),
@@ -726,7 +728,7 @@ public class NomaiSky : ModBehaviour {
             lineObj.transform.position = posB;
         }
         Destroy(s);
-        TravelLinesVisibility(ModHelper.Config.GetSettingsValue<string>("Visited systems display type"));
+        TravelLinesVisibility(ModHelper.Config.GetSettingsValue<string>("Visited_display"));
     }
     public void MakeProxy(string name, GameObject planetGO, float radius, Color tint) {
         GameObject proxy = new($"{name}_Proxy");
@@ -941,7 +943,8 @@ public class NomaiSky : ModBehaviour {
                 //Set flames colors:
                 if(jetpackFuel != null && flameTextures.ContainsKey(jetpackFuel)) refuelingTool.SetThrusterColor(false, jetpackColor, flameTextures[jetpackFuel]);
                 if(thrustersFuel != null && flameTextures.ContainsKey(thrustersFuel)) refuelingTool.SetThrusterColor(true, thrustersColor, flameTextures[thrustersFuel]);
-            } else thrustersFuel = jetpackFuel = null;
+            } else if(currentCenter == (0, 0, 0)) thrustersFuel = jetpackFuel = fuelNames[0];
+            else thrustersFuel = jetpackFuel = null;
             //Updates custom warp drive:
             if(ship.warp == null) ship.warp = ship.transform.gameObject.AddComponent<WarpController>();
             ship.warp.currentOffset = galacticMap[currentCenter].offset;
@@ -962,7 +965,16 @@ public class NomaiSky : ModBehaviour {
     string SystemCreator(string starName, float radius, Color32 starColor) {
         string path = Path.Combine(ModHelper.Manifest.ModFolderPath, "planets", galaxyName + "-" + currentCenter.x + "-" + currentCenter.y + "-" + currentCenter.z);
         Directory.CreateDirectory(path + "/" + starName);
-        File.WriteAllText(Path.Combine(path, starName, starName + ".json"), StarCreator(starName, radius, starColor));
+        float starLuminosity = Random128.Rng.Range(0.5f, 3f, "StarLuminosity");
+        File.WriteAllText(Path.Combine(path, starName, starName + ".json"), StarCreator(starName, radius, starColor, starLuminosity));
+        (float innerHZ, float outerHZ, float innerSemiHZ, float outerSemiHZ) = HZCalculator(radius/1600, starLuminosity);//inner/outerHZ are relative to TH orbit radius, passed radius must be relative to Sun radius, luminosity too
+        int radiusTHorbit = 8593;//TH orbit radius, to convert OW AU in meters
+        radiusTHorbit *= 3;//Big cheat here (because real TH would be waaay too close to Sun to be habitable, so not my fault...)
+        innerHZ *= radiusTHorbit;
+        outerHZ *= radiusTHorbit;
+        innerSemiHZ *= radiusTHorbit;
+        outerSemiHZ *= radiusTHorbit;
+        ModHelper.Console.WriteLine("Inner: " + innerHZ + " | Outer: " + outerHZ + " || Inner O: " + innerSemiHZ + " | Outer O: " + outerSemiHZ, MessageType.Success);//TEST
         int nbPlanets = Mathf.CeilToInt(GaussianDist(maxPlanets / 2f, maxPlanets / 4f, 2, "NbPlanets"));
         List<string>[] props = new List<string>[nbPlanets];
         List<int> chosenInit = [];
@@ -1008,7 +1020,11 @@ public class NomaiSky : ModBehaviour {
             }
             string planetName = PlanetNameGen(i + "Name");
             Directory.CreateDirectory(Path.Combine(path, planetName));
-            File.WriteAllText(Path.Combine(path, planetName, planetName + ".json"), PlanetCreator(starName, planetName, minPlanetOrbit + i * planetOrbitSpacing + orbits[i], moonProps[0]));
+            int orbitRadius = minPlanetOrbit + i * planetOrbitSpacing + orbits[i];
+            byte habitability = 0;
+            if(orbitRadius > innerHZ && orbitRadius < outerHZ) habitability = 2;
+            else if(orbitRadius > innerSemiHZ && orbitRadius < outerSemiHZ) habitability = 1;
+            File.WriteAllText(Path.Combine(path, planetName, planetName + ".json"), PlanetCreator(starName, planetName, orbitRadius, habitability, moonProps[0]));
             if(nbMoons > 0) {
                 int[] moonOrbits = new int[nbMoons];
                 int allowedMoonOrbits = (maxMoons - nbMoons + orbitalMargin) * moonOrbitSpacing;
@@ -1020,7 +1036,7 @@ public class NomaiSky : ModBehaviour {
                 for(int j = 0;j < nbMoons;j++) {
                     string moonName = PlanetNameGen(i + "MoonName" + j, true);
                     Directory.CreateDirectory(Path.Combine(path, planetName, moonName.Replace(' ', '_')));
-                    File.WriteAllText(Path.Combine(path, planetName, moonName.Replace(' ', '_'), moonName.Replace(' ', '_') + ".json"), PlanetCreator(starName, moonName, minMoonOrbit + j * moonOrbitSpacing + moonOrbits[j], moonProps[j + 1], planetName));
+                    File.WriteAllText(Path.Combine(path, planetName, moonName.Replace(' ', '_'), moonName.Replace(' ', '_') + ".json"), PlanetCreator(starName, moonName, minMoonOrbit + j * moonOrbitSpacing + moonOrbits[j], habitability, moonProps[j + 1], planetName));
                 }
             }
         }
@@ -1031,7 +1047,7 @@ public class NomaiSky : ModBehaviour {
             "\"allowOutsideItems\":false," +
             "\"respawnHere\":true}";
     }
-    string StarCreator(string starName, float radius, Color32 starColor) {
+    string StarCreator(string starName, float radius, Color32 starColor, float starLuminosity) {
         string relativePath = "planets/" + galaxyName + "-" + currentCenter.x + "-" + currentCenter.y + "-" + currentCenter.z + "/" + starName + "/";
         SpriteGenerator("star", relativePath + "map_star.png", starColor);
         string finalJson = $$"""
@@ -1064,7 +1080,7 @@ public class NomaiSky : ModBehaviour {
                         "b": {{(starColor.b + 510) / 3}},
                         "a": 255
                     },
-                    "solarLuminosity": {{Random128.Rng.Range(0.5f, 3f, "StarLuminosity").ToString(CultureInfo.InvariantCulture)}},
+                    "solarLuminosity": {{starLuminosity.ToString(CultureInfo.InvariantCulture)}},
                     "stellarDeathType": "none"
                 },
                 "Props": {
@@ -1098,7 +1114,7 @@ public class NomaiSky : ModBehaviour {
             """;
         return finalJson;
     }
-    string PlanetCreator(string starName, string planetName, int orbit, string props = null, string orbiting = "") {
+    string PlanetCreator(string starName, string planetName, int orbit, byte habitability, string props = null, string orbiting = "") {
         string relativePath = "planets/" + galaxyName + "-" + currentCenter.x + "-" + currentCenter.y + "-" + currentCenter.z + "/" + (orbiting != "" ? orbiting + "/" : "") + planetName.Replace(' ', '_') + "/";
         string characteristics = "A ";
         List<char> vowels = ['a', 'e', 'i', 'o', 'u'];
@@ -1196,7 +1212,7 @@ public class NomaiSky : ModBehaviour {
             characteristics += ", with " + GetColorName(color) + " rings";
             stemp = " and ";
         } else stemp = ", with ";
-        bool hasWater = Random128.Rng.Proba(planetName + "Water") < waterProba;
+        bool hasWater = Random128.Rng.Proba(planetName + "Water") < (habitability < 1 ? waterProbaOutsideHZ : (habitability > 1 ? waterProbaInHZ : waterProbaInSemiHZ));
         bool hasFuelOcean = props != null && props.Substring(2, 4) == "fuel";
         int fuelType = 0;
         if(hasFuelOcean) {
@@ -1211,7 +1227,7 @@ public class NomaiSky : ModBehaviour {
         }
         float waterLevel = 0;
         if(hasWater || hasFuelOcean) {
-            waterLevel = GaussianDist((hmHigh + hmLow) / 2 + (hmHigh - hmLow) / 8, (hmHigh - hmLow) / 4, 2, planetName + "WaterLevel");
+            waterLevel = GaussianDist((hmHigh + hmLow) / 2, (hmHigh - hmLow) / 8, planetName + "WaterLevel");
             finalJson += "\"Water\": {\n" +
                 "\t\"size\": " + waterLevel.ToString(CultureInfo.InvariantCulture) + ",\n" +
                 "\t\"tint\": {\n" +
@@ -1273,24 +1289,25 @@ public class NomaiSky : ModBehaviour {
                 characteristics += (vowels.Contains(stemp[0]) ? "an " : "a ") + stemp;
             }
         }
-        bool hasOxygenTrees;
+        bool hasOxygen, hasTrees = false;
         if(hasWater) {
             characteristics += ". There's water on the planet";
-            hasOxygenTrees = Random128.Rng.Proba(planetName + "Oxygen") < oxygenProbaIfWater;
+            hasOxygen = Random128.Rng.Proba(planetName + "Oxygen") < oxygenProbaIfWater;
             stemp = ", and t";
         } else {
-            hasOxygenTrees = Random128.Rng.Proba(planetName + "Oxygen") < oxygenProbaNoWater;
+            hasOxygen = Random128.Rng.Proba(planetName + "Oxygen") < oxygenProbaNoWater;
             stemp = ". T";
         }
-        finalJson += "\t\"hasOxygen\": " + hasOxygenTrees.ToString().ToLower() + ",\n";
-        if(hasOxygenTrees) {
+        finalJson += "\t\"hasOxygen\": " + hasOxygen.ToString().ToLower() + ",\n";
+        if(hasOxygen) {
             characteristics += stemp + "here seems to be oxygen";
-            hasOxygenTrees = Random128.Rng.Proba(planetName + "Trees") < treeProbaIfOxygen;
+            hasTrees = Random128.Rng.Proba(planetName + "Trees") < treeProbaIfOxygen;
         }
-        finalJson += "\t\"hasTrees\": " + hasOxygenTrees.ToString().ToLower() + ",\n" +
+        finalJson += "\t\"hasTrees\": " + hasTrees.ToString().ToLower() + ",\n" +
             "\t\"hasRain\": " + (hasClouds ? (Random128.Rng.Proba(planetName + "Rain") < (hasWater ? rainProbaIfCloudsAndWater : rainProbaIfCloudsNoWater)).ToString().ToLower() : "false") + "\n" +
             "},\n";
-        if(hasOxygenTrees || props != null) {
+        string commonProps = SpawnProps(planetName, radius, habitability, hasWater, hasOxygen, hasTrees, hmLow, hmHigh, waterLevel);
+        if(commonProps != "" || props != null) {
             finalJson += "\"Props\": {\n";
             if(hasFuelOcean) {
                 finalJson += "\t\"details\": [{\n" +
@@ -1299,13 +1316,12 @@ public class NomaiSky : ModBehaviour {
                     "\t\t\"scale\": " + waterLevel.ToString(CultureInfo.InvariantCulture) +
                     "\n\t}]";
             }
-            if(hasOxygenTrees || !String.IsNullOrEmpty(props)) {
+            if(commonProps != "" || !String.IsNullOrEmpty(props)) {
                 if(hasFuelOcean) finalJson += ",\n";
                 finalJson += "\t\"scatter\": [\n" +
-                    (!String.IsNullOrEmpty(props) ? props + (hasOxygenTrees ? ",\n" : "\n") : "");
-                if(hasOxygenTrees) {
-                    finalJson += "\t\t{\"path\": \"" + (hasDLC ? "DreamWorld_Body/Sector_DreamWorld/Sector_Underground/IslandsRoot/IslandPivot_B/Island_B/Props_Island_B/Tree_DW_L (3)" : "QuantumMoon_Body/Sector_QuantumMoon/State_TH/Interactables_THState/Crater_1/Crater_1_QRedwood/QRedwood (2)/Prefab_TH_Redwood") + "\", \"count\": " + IGaussianDist(meanNbBigTrees * Mathf.PI * radius * radius / 250000, planetName + "NbBTrees") + ", \"scale\": " + GaussianDist(1, 0.2f, planetName + "SizeBTrees").ToString(CultureInfo.InvariantCulture) + "},\n" +
-                        "\t\t{\"path\": \"" + (hasDLC ? "DreamWorld_Body/Sector_DreamWorld/Sector_DreamZone_4/Props_DreamZone_4_Upper/Tree_DW_S_B" : "QuantumMoon_Body/Sector_QuantumMoon/State_TH/Interactables_THState/Crater_3/Crater_3_Sapling/QSapling/Tree_TH_Sapling") + "\", \"count\": " + IGaussianDist(meanNbSmallTrees * Mathf.PI * radius * radius / 250000, planetName + "NbLTrees") + ", \"scale\": " + GaussianDist(1, 0.2f, planetName + "SizeLTrees").ToString(CultureInfo.InvariantCulture) + "}\n";
+                    (!String.IsNullOrEmpty(props) ? props + (commonProps != "" ? ",\n" : "\n") : "");
+                if(commonProps != "") {
+                    finalJson += commonProps;
                     characteristics += " and trees";
                 }
                 finalJson += "\t]";
@@ -1342,6 +1358,88 @@ public class NomaiSky : ModBehaviour {
             "\"MapMarker\": {\"enabled\": true}\n}";
         AssetsMaker(relativePath, planetName, characteristics);
         return finalJson;
+    }
+    string SpawnProps(string planetName, float planetRadius, byte habitability, bool hasWater, bool hasOxygen, bool hasTrees, float minHMHeight, float maxHMHeight, float waterLevel) {
+        string result = "";
+        if(Random128.Rng.Proba(planetName + "Rocks") < 0.6f)
+            result += GetProp(planetName, planetRadius, IGaussianDist(30), "rocks");
+        if(hasWater)
+            if(Random128.Rng.Proba(planetName + "Mountain") < 0.05f)
+                result += GetProp(planetName, planetRadius, 1, "geyser mountain");
+        if(hasTrees) {
+            result += GetProp(planetName, planetRadius, IGaussianDist(meanNbBigTrees, planetName + "NbBTrees"), "trees", true)
+                + GetProp(planetName, planetRadius, IGaussianDist(meanNbSmallTrees, planetName + "NbSTrees"), "trees");
+            if(Random128.Rng.Proba(planetName + "Sequoia") < 0.05f)
+                result += GetProp(planetName, planetRadius, Random128.Rng.Range(1, 10), "sequoia");
+        }
+        if(habitability > 0) {
+            if(hasOxygen) {
+                bool hasGrass = Random128.Rng.Proba(planetName + "Grass") < 0.6f;
+                if(hasGrass) result += GetProp(planetName, planetRadius, Random128.Rng.Range(1, 100), "grass"); //60%
+                bool hasFoliage = Random128.Rng.Proba(planetName + "Foliage") < (hasGrass ? 0.6f : 0.3f);
+                if(hasFoliage) result += GetProp(planetName, planetRadius, Random128.Rng.Range(1, 80), "foliage"); //48%
+                bool hasPlants = Random128.Rng.Proba(planetName + "Plants") < (hasFoliage ? 0.6f : (hasGrass ? 0.4f : 0.2f));
+                if(hasPlants) result += GetProp(planetName, planetRadius, Random128.Rng.Range(1, 60), "plants"); //45.44%
+                if(hasPlants && Random128.Rng.Proba(planetName + "BigTrunc") < 0.01f)
+                    result += GetProp(planetName, planetRadius, 1, "huge hollow trunc"); //0.4544%
+            }
+            if(habitability > 1) {
+                if(hasWater && hasOxygen && Random128.Rng.Proba(planetName + "FishBones") < 0.1f)
+                    result += GetProp(planetName, planetRadius, Random128.Rng.Range(1, 40), "fish bones", false, minHMHeight, waterLevel + 5);
+            //} else {
+            }
+        //} else {
+        }
+        return result;
+    }
+    string GetProp(string planetName, float planetRadius, int nbPerSqKm, string propType, bool big = false, float minHeight = 0, float maxHeight = 0, string variant = null) {
+        string path;
+        switch(propType) {
+        case "fish bones":
+            path = "TimberHearth_Body/Sector_TH/Sector_Village/Sector_StartingCamp/Props_StartingCamp/OtherComponentsGroup/Props_HEA_CampsiteCookingStand/Props_HEA_SardineSkeleton2";
+            break;
+        case "grass":
+            path = "TimberHearth_Body/Sector_TH/Sector_Village/Sector_StartingCamp/DetailPatches_StartingCamp/BakedForStreaming/DetailPatches_StartingCamp/Foliage_TH_GrassPatch__9_";
+            break;
+        case "foliage":
+            if(variant == "small")
+                path = "TimberHearth_Body/Sector_TH/Sector_Village/Sector_StartingCamp/DetailPatches_StartingCamp/BakedForStreaming/DetailPatches_StartingCamp/Foliage_TH_HighPatch__3_";
+            else if(big)
+                path = "TimberHearth_Body/Sector_TH/Sector_Village/Sector_StartingCamp/DetailPatches_StartingCamp/BakedForStreaming/DetailPatches_StartingCamp/Foliage_TH_HighPatch__1_";
+            else
+                path = "TimberHearth_Body/Sector_TH/Sector_Village/Sector_StartingCamp/DetailPatches_StartingCamp/BakedForStreaming/DetailPatches_StartingCamp/Foliage_TH_HighPatch__5_";
+            break;
+        case "plants":
+            if(big)
+                path = "TimberHearth_Body/Sector_TH/Sector_Village/Sector_StartingCamp/DetailPatches_StartingCamp/BakedForStreaming/DetailPatches_StartingCamp/Foliage_TH_LowPatch__4_";
+            else
+                path = "TimberHearth_Body/Sector_TH/Sector_Village/Sector_StartingCamp/DetailPatches_StartingCamp/BakedForStreaming/DetailPatches_StartingCamp/Foliage_TH_LowPatch__5_";
+            break;
+        case "rocks":
+            path = "TimberHearth_Body/Sector_TH/Sector_Village/Sector_StartingCamp/DetailPatches_StartingCamp/BakedForStreaming/DetailPatches_StartingCamp/Props_TH_Clutter__30_";
+            break;
+        case "huge hollow trunc":
+            path = "TimberHearth_Body/Sector_TH/Sector_Village/Geometry_Village/OtherComponentsGroup/ControlledByProxy_Structures/Tree_TH_LaunchTowerSequoia_LowPoly";
+            break;
+        case "sequoia":
+            path = "TimberHearth_Body/Sector_TH/Sector_Village/Geometry_Village/OtherComponentsGroup/ControlledByProxy_Terrain/Tree_TH_Sequoia/Prefab_TH_Sequoia_V2";
+            break;
+        case "geyser mountain":
+            path = "TimberHearth_Body/Sector_TH/Geometry_TH/ControlledByProxy_Base/Geyser_Mountains";
+            break;
+        case "trees":
+            if(variant != null) path = "";
+            else if(big)
+                path = (hasDLC ? "DreamWorld_Body/Sector_DreamWorld/Sector_Underground/IslandsRoot/IslandPivot_B/Island_B/Props_Island_B/Tree_DW_L (3)" : "QuantumMoon_Body/Sector_QuantumMoon/State_TH/Interactables_THState/Crater_1/Crater_1_QRedwood/QRedwood (2)/Prefab_TH_Redwood");
+            else
+                path = (hasDLC ? "DreamWorld_Body/Sector_DreamWorld/Sector_DreamZone_4/Props_DreamZone_4_Upper/Tree_DW_S_B" : "QuantumMoon_Body/Sector_QuantumMoon/State_TH/Interactables_THState/Crater_3/Crater_3_Sapling/QSapling/Tree_TH_Sapling");
+            break;
+        default:
+            return "";
+        }
+        string propId = (big ? "B" : "") + propType + (variant ?? "");
+        float size = GaussianDist(1, 0.2f, planetName + "Size" + propId);
+        return "\t\t{\"path\": \"" + path + "\", \"count\": " + ((int)(nbPerSqKm * Mathf.PI * planetRadius * planetRadius / 250000)).ToString() + ", \"scale\": " + size.ToString(CultureInfo.InvariantCulture) + (minHeight > 0 ? ", \"minHeight\": " + minHeight.ToString(CultureInfo.InvariantCulture) : "") + (maxHeight > 0 ? ", \"maxHeight\": " + maxHeight.ToString(CultureInfo.InvariantCulture) : "") + "},\n";
     }
     void SpriteGenerator(string mode, string path) { SpriteGenerator(mode, path, Color.clear); }
     void SpriteGenerator(string mode, string path, Color32 color, byte[] ringData = null) {
@@ -1603,6 +1701,30 @@ public class NomaiSky : ModBehaviour {
                 jetpackFuel = texture;
             }
         }
+    }
+    (float, float, float, float) HZCalculator(float relRadius, float relLuminosity) {//(Kopparapu et al. 2013)
+        //Estimate T_eff - 5780 K from relative values
+        double T_star = 5780 * (Mathf.Sqrt(Mathf.Sqrt(relLuminosity) / relRadius) - 1);
+        //Conservative HZ coefficients
+        double S_in = 1.0140, S_out = 0.3438,
+            a_in = 8.1774E-5, a_out = 5.8942E-5,
+            b_in = 1.7063E-9, b_out = 1.6558E-9,
+            c_in = -4.3241E-12, c_out = -3.0045E-12,
+            d_in = -6.6462E-16, d_out = -5.2983E-16;
+        //Optimistic HZ coefficients
+        double S2_in = 1.7753, S2_out = 0.3179,
+            a2_in = 1.4316E-4, a2_out = 5.4513E-5,
+            b2_in = 2.9875E-9, b2_out = 1.5313E-9,
+            c2_in = -7.5702E-12, c2_out = -2.7786E-12,
+            d2_in = -1.1635E-15, d2_out = -4.8997E-16;
+        //Effective stellar flux at inner/outer HZ edges
+        double s_eff_in = S_in + a_in * T_star + b_in * Math.Pow(T_star, 2) + c_in * Math.Pow(T_star, 3) + d_in * Math.Pow(T_star, 4),
+            s_eff_out = S_out + a_out * T_star + b_out * Math.Pow(T_star, 2) + c_out * Math.Pow(T_star, 3) + d_out * Math.Pow(T_star, 4);
+        //Effective stellar flux at inner/outer optimistic HZ edges
+        double s2_eff_in = S2_in + a2_in * T_star + b2_in * Math.Pow(T_star, 2) + c2_in * Math.Pow(T_star, 3) + d2_in * Math.Pow(T_star, 4),
+            s2_eff_out = S2_out + a2_out * T_star + b2_out * Math.Pow(T_star, 2) + c2_out * Math.Pow(T_star, 3) + d2_out * Math.Pow(T_star, 4);
+        //HZ distances in AU
+        return ((float)Math.Sqrt(relLuminosity / s_eff_in), (float)Math.Sqrt(relLuminosity / s_eff_out), (float)Math.Sqrt(relLuminosity / s2_eff_in), (float)Math.Sqrt(relLuminosity / s2_eff_out));
     }
     /*string GetStylizedName(Color color) {
         Dictionary<string, string[]> StylizedColorNames = new() {

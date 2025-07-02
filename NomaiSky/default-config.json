@@ -2,7 +2,9 @@
     "$schema": "https://raw.githubusercontent.com/ow-mods/owml/master/schemas/config_schema.json",
     "enabled": true,
     "settings": {
-        "Star system to start the game in": {
+        "Entry_system": {
+            "title": "Entry star system",
+            "tooltip": "The star system you start in when clicking ''New/Resume expedition''.",
             "type": "selector",
             "value": "Last visited system",
             "options": [
@@ -12,7 +14,9 @@
                 "Distant system"
             ]
         },
-        "Difficulty (ship fuel capacity)": {
+        "Difficulty": {
+            "title": "Difficulty",
+            "tooltip": "How much fuel your ship can store. (''Sandbox'' gives you infinite fuel.)",
             "type": "selector",
             "value": "Medium",
             "options": [
@@ -22,7 +26,10 @@
                 "Hard"
             ]
         },
-        "Visited systems display type": {
+        "Visited_display": {
+            "title": "Travel display type",
+            "tooltip": "How visited systems appear on the map: ''All lines'' draws a complete path,
+''Lines'' links only nearby systems, ''Rings'' shows green circles instead of lines.",
             "type": "selector",
             "value": "Lines",
             "options": [
@@ -32,7 +39,9 @@
                 "None"
             ]
         },
-        "Loading screen tips": {
+        "Loading_tips": {
+            "title": "Loading screen tips",
+            "tooltip": "Display tips and messages during loading screens?",
             "type": "toggle",
             "value": "true"
         }

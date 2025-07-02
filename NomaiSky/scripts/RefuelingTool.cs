@@ -335,8 +335,10 @@ public class RefuelingTool : OWItem
 
         NomaiSky.Instance.SetFlameColor(resource.FlameColor, resource.Name, !fillingPlayer);
         SetThrusterColor(!fillingPlayer, resource.FlameColor, resource.FlameTexture);
-        if(fillingPlayer)
+        if(fillingPlayer) {
             _playerResources.StartRefillResources(true, false);
+            NomaiSky.Instance.ModHelper.Events.Unity.FireInNUpdates(_playerResources.StopRefillResources, Mathf.CeilToInt(1f / Time.deltaTime));
+        }
     }
 
     public void StopRefueling()
