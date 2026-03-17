@@ -10,6 +10,7 @@ using UnityEngine;//
 
 namespace NomaiSky;
 public class NomaiSky : ModBehaviour {
+    #region "PARAMETERS"
     // CUSTOMIZATION PARAMETERS:
     const int minStarRadius = 1000,
         maxStarRadius = 6400,
@@ -117,6 +118,18 @@ public class NomaiSky : ModBehaviour {
     readonly int galaxyName = 0;
     readonly List<(float esperance, int max, bool canRepeat, string prop)> rareProps = [];
     const string generationVersion = "0.4.3";//Changing this will cause a rebuild of all previously visited systems, increment only when changing the procedural generation!
+    // GLOBES:
+    readonly List<string> expectedFacts = [];
+    const string globePrefix = $"VAMBOK.NOMAISKY_{generationVersion}_Globe_";
+    [Serializable]
+    public class GlobeMeta {
+        public int x, y, z;
+        public string systemName;   // NH name
+        public string starName;
+        public float starRadius;
+        public Color32 starColor;
+        public string version;      // generationVersion
+    }
     // UTILS:
     UnityEngine.UI.Text splashScreenText, splashScreenText2;
     readonly List<int> seenTexts = [];
@@ -124,8 +137,9 @@ public class NomaiSky : ModBehaviour {
     float timeOffset = 0;
     bool isWarping = false;
     (Transform transform, OWRigidbody body, ShipResources resources, ShipCockpitController cockpit, SuitPickupVolume suit, WarpController warp, Autopilot autopilot) ship;
+    #endregion
 
-    // START:
+    #region "START"
     public void Awake() {
         Instance = this;
         // You won't be able to access OWML's mod helper in Awake.
@@ -251,6 +265,7 @@ public class NomaiSky : ModBehaviour {
         ModHelper.Events.Unity.RunWhen(PlayerData.IsLoaded, InitSolarSystem);
         GlobalMessenger.AddListener("EnterMapView", TLVisibilityShow);
         GlobalMessenger.AddListener("ExitMapView", TLVisibilityHide);
+        GlobalMessenger.AddListener("ShipLogUpdated", TryAwardSnowglobe);
         //  Spawn into it:
         NewHorizons.GetStarSystemLoadedEvent().AddListener(SpawnIntoSystem);
         OnCompleteSceneLoad(OWScene.TitleScreen, OWScene.TitleScreen); // We start on title screen
@@ -290,6 +305,12 @@ public class NomaiSky : ModBehaviour {
             SubmitActionLoadScene actionLoadScene = GameObject.Find("PauseMenuBlock").transform.Find("PauseMenuItems/PauseMenuItemsLayout/Button-ExitToMainMenu").GetComponent<SubmitActionLoadScene>();
             actionLoadScene.OnSubmitAction -= SaveState;
             actionLoadScene.OnSubmitAction += SaveState;
+            if(currentCenter == (0, 0, 0)) {
+                GameObject toto = Instantiate(GameObject.Find("Props_HEA_Ladle"), GameObject.Find("Gneiss:Rig:Spine_Top_Jnt").transform);
+                toto.transform.localPosition = new Vector3(0.1f, -0.33f, -0.21f);
+                toto.transform.localEulerAngles = new Vector3(10, 140, 170);
+                GameObject.Find("Props_HEA_Banjo").SetActive(false);
+            }
         }
         /*string toto = Heightmaps.CreateHeightmap(Path.Combine(ModHelper.Manifest.ModFolderPath, "planets/heightmap")); //TEST
         ModHelper.Console.WriteLine("HM done! "+toto, MessageType.Success); //TEST*/
@@ -385,8 +406,9 @@ public class NomaiSky : ModBehaviour {
             }
         }
     }
+    #endregion
 
-    // SAVE & CONFIG UTILS:
+    #region "SAVE & CONFIG UTILS"
     public override void Configure(IModConfig config) {
         if(LoadManager.GetCurrentScene() == OWScene.SolarSystem) {
             TravelLinesVisibility(config.GetSettingsValue<string>("Visited_display"));
@@ -491,8 +513,9 @@ public class NomaiSky : ModBehaviour {
         //PlayerData._currentGameSave.shipLogFactSaves.Remove("NomaiSky_thrustersFuel");
         PlayerData.SaveCurrentGame();
     }
+    #endregion
 
-    // INITIALISATION:
+    #region "INITIALISATION"
     void InitSolarSystem() {//here currentCenter should be 0,0,0
         LoadState();
         //Generating star neighborhood:
@@ -517,8 +540,9 @@ public class NomaiSky : ModBehaviour {
         if(newSystem != (0, 0, 0)) WarpToSystem(newSystem);
         else lastVisited = currentCenter = newSystem;
     }
+    #endregion
 
-    // GALACTIC MAP:
+    #region "GALACTIC MAP"
     void TravelLinesVisibility(string config) {
         travelMarkersConfig = config;
         bool inMapView = PlayerState.InMapView();
@@ -760,8 +784,9 @@ public class NomaiSky : ModBehaviour {
         }
         proxy.SetActive(true);
     }
+    #endregion
 
-    // WARPING:
+    #region "WARPING"
     public void MapExploration(ReferenceFrame targetReferenceFrame, ScreenPrompt prompt) {
         MVBGalacticMap data = targetReferenceFrame.GetOWRigidBody().GetComponent<MVBGalacticMap>();
         if(data != null && PlayerState.IsInsideShip()) {
@@ -907,7 +932,27 @@ public class NomaiSky : ModBehaviour {
                     shipSpawnPoint.position = new Vector3(0, 10000, -34100);
                     shipSpawnPoint.eulerAngles = new Vector3(16.334f, 0, 0);
                 }
+
+                expectedFacts.Clear();
+                string galacticIndex = $"{galaxyName}_{currentCenter.x}_{currentCenter.y}_{currentCenter.z}";
+                if(PlayerData.GetShipLogFactSave(globePrefix + galacticIndex) == null) {
+                    string BuildFactId(string planetName) => $"VAMBOK.NOMAISKY_{generationVersion}_" + galacticIndex + "_" + new DirectoryInfo(planetName).Name.ToUpper();
+                    foreach(var planetDir in Directory.GetDirectories(Path.Combine(ModHelper.Manifest.ModFolderPath, "planets", $"{galaxyName}-{currentCenter.x}-{currentCenter.y}-{currentCenter.z}"))) {
+                        if(File.Exists(Path.Combine(planetDir, "shiplogs.xml"))) expectedFacts.Add(BuildFactId(planetDir));
+                        try {
+                            foreach(var moonDir in Directory.GetDirectories(planetDir))
+                                if(File.Exists(Path.Combine(moonDir, "shiplogs.xml"))) expectedFacts.Add(BuildFactId(moonDir));
+                        } catch { }
+                    }
+                }
             }
+        } else if (entryPosition != Vector3.zero) {
+            ModHelper.Events.Unity.FireInNUpdates(() => {
+                ShipBody shipBody = ship.transform.GetComponent<ShipBody>();
+                shipBody.SetPosition(entryPosition);
+                shipBody.SetRotation(entryRotation);
+                shipBody.SetVelocity(entrySpeed);
+            }, 61);
         }
         entryPosition = Vector3.zero;
         ModHelper.Events.Unity.FireInNUpdates(() => {
@@ -948,6 +993,8 @@ public class NomaiSky : ModBehaviour {
             //Updates custom warp drive:
             if(ship.warp == null) ship.warp = ship.transform.gameObject.AddComponent<WarpController>();
             ship.warp.currentOffset = galacticMap[currentCenter].offset;
+            //Spawn snowglobes in ship:
+            SpawnSnowglobesInShip();
             //Spawn surrounding stars:
             GenerateNeighborhood();
             ModHelper.Console.WriteLine("Loaded into " + galacticMap[currentCenter].starName + " (" + systemName + ")! Current galaxy: " + galaxyName, MessageType.Success);//LOG
@@ -955,8 +1002,62 @@ public class NomaiSky : ModBehaviour {
             SetWaitingText(false);
         }, 3);
     }
+    #endregion
 
-    // GENERATION:
+    #region "SNOWGLOBES"
+    void TryAwardSnowglobe() => TryAwardSnowglobe(currentCenter);
+    void TryAwardSnowglobe((int x,int y,int z) sys) {
+        string key = globePrefix + $"{galaxyName}_{sys.x}_{sys.y}_{sys.z}";
+        if(PlayerData.GetShipLogFactSave(key) != null) return;// If we already have the globe for this system
+        foreach(var fact in expectedFacts)
+            if(PlayerData.GetShipLogFactSave(fact) == null) return;
+        PlayerData._currentGameSave.shipLogFactSaves[key] = new ShipLogFactSave(galacticMap[sys].name);
+        NotificationManager.SharedInstance.PostNotification(new NotificationData(NotificationTarget.All, "Exploration complete! System data stored successfully.", 3f, true), false);
+    }
+    void SpawnSnowglobesInShip() {
+        // Find an anchor near flight console; fallback to ship root
+        Transform anchor = Locator.GetShipTransform();
+        Transform console = anchor?.Find("Ship_Body/Module_Cockpit/Systems_Cockpit/Cockpit_Geometry/FlightConsole_Geo");
+        if (console != null) anchor = console;
+
+        // Iterate all earned snowglobes
+        foreach (KeyValuePair<string, ShipLogFactSave> kvp in PlayerData._currentGameSave.shipLogFactSaves) {
+            if (!kvp.Key.StartsWith(globePrefix)) continue;
+
+            // Parse coords from key
+            string[] parts = kvp.Key.Substring(globePrefix.Length).Split('_');
+            if (parts.Length != 3) continue;
+
+            SpawnSnowglobe((int.Parse(parts[0]), int.Parse(parts[1]), int.Parse(parts[2])), kvp.Value.id, anchor);
+        }
+    }
+    void SpawnSnowglobe((int, int, int) coords, string name, Transform anchor) {
+        // Create a tiny "display" sphere for now
+        GameObject globe = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        globe.name = "NS_Snowglobe_" + name;
+        globe.transform.SetParent(anchor, false);
+
+        // Stagger position so multiple globes don't overlap
+        int hash = globe.name.GetHashCode();
+        Vector3 local = new((hash % 7) * 0.25f, 0.35f + ((hash / 7) % 3) * 0.15f, 0.2f + ((hash / 21) % 3) * 0.15f);
+        globe.transform.localPosition = local;
+        globe.transform.localScale = Vector3.one * 0.12f;
+
+        // Simple "starry" material
+        Material mat = new(Shader.Find("Standard"));
+        mat.EnableKeyword("_EMISSION");
+        Color32 c = galacticMap[coords].color;
+        mat.color = new Color32((byte)(c.r / 2), (byte)(c.g / 2), (byte)(c.b / 2), 255);
+        mat.SetColor("_EmissionColor", new Color(c.r / 255f, c.g / 255f, c.b / 255f) * 0.6f);
+        globe.GetComponent<MeshRenderer>().material = mat;
+
+        // Remove physics so it sits nicely (Step-1: decorative)
+        Destroy(globe.GetComponent<Collider>());
+        globe.AddComponent<OWRigidbody>().MakeKinematic();
+    }
+    #endregion
+
+    #region "GENERATION"
     void StarInitializator(out string starName, out float radius, out Color32 color) {
         starName = StarNameGen("StarName");
         radius = GaussianDist(avgStarRadius, varStarRadius, "StarRadius");
@@ -1563,7 +1664,9 @@ public class NomaiSky : ModBehaviour {
             "</ExploreFact>\n</Entry>\n</AstroObjectEntry>");
         SpriteGenerator("fact", relativePath);
     }
-    // NAME GENERATION:
+    #endregion
+
+    #region "NAME GENERATION"
     string StarNameGen(string parameter) {
         string[] nm1 = ["a", "e", "i", "o", "u", "", "", "", "", "", "", "", "", "", "", "", "", "", ""];
         string[] nm2 = ["b", "c", "d", "f", "g", "h", "j", "k", "l", "m", "n", "p", "q", "r", "s", "t", "v", "w", "x", "y", "z", "br", "cr", "dr", "gr", "kr", "pr", "sr", "tr", "str", "vr", "zr", "bl", "cl", "fl", "gl", "kl", "pl", "sl", "vl", "zl", "ch", "sh", "ph", "th"];
@@ -1626,8 +1729,9 @@ public class NomaiSky : ModBehaviour {
         }
         return char.ToUpper(result[0]) + result.Substring(1);
     }
+    #endregion
 
-    // UTILS:
+    #region "UTILS"
     Color32 CGaussianDist(float mean, string parameter, byte alpha = 0) => CGaussianDist(mean, 0, 3, parameter, alpha);
     Color32 CGaussianDist(float mean, float sigma, string parameter, byte alpha = 0) => CGaussianDist(mean, sigma, 3, parameter, alpha);
     Color32 CGaussianDist(float mean, float sigma = 0, float limit = 3, string parameter = null, byte alpha = 0) {
@@ -1827,6 +1931,7 @@ public class NomaiSky : ModBehaviour {
         }
         return modifiedName;
     }*/
+    #endregion
 }
 
 
@@ -1898,3 +2003,7 @@ public class NomaiSky : ModBehaviour {
 //  save player/ship flames state between systems & games
 //  add system change wait screen waiting messages trivia (if never travel or warp, proba of "you can also...")
 //  add difficulty config (maxFuel)
+//  add setting tooltips and proper names
+//  base water apparition on the Habitable Zone (find real calculations) [https://arxiv.org/abs/1301.6674 & https://github.com/saeedm31/HZ/blob/master/HZ_TeffLum_Main.py]
+//  fix water flooding everything on too many planets
+//  smooth HM unused pixels a bit
