@@ -1,0 +1,80 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<DialogueTree>
+	<DialogueNode>
+		<Name>Gneiss1</Name>
+		<DialogueOptionsList>
+			<DialogueOption>
+				<Text>Uh... what are you doing with that ladle?</Text>
+				<DialogueTarget>Gneiss_shocked</DialogueTarget>
+				<CancelledCondition>NOMAISKY_GNEISS_MISSION</CancelledCondition>
+			</DialogueOption>
+		</DialogueOptionsList>
+	</DialogueNode>
+	<DialogueNode>
+		<Name>GneissSecondary</Name>
+		<DialogueOptionsList>
+			<DialogueOption>
+				<Text>By the way, what are you doing with that ladle?</Text>
+				<DialogueTarget>Gneiss_shocked</DialogueTarget>
+				<CancelledCondition>NOMAISKY_GNEISS_MISSION</CancelledCondition>
+			</DialogueOption>
+		</DialogueOptionsList>
+	</DialogueNode>
+	<DialogueNode>
+		<Name>Gneiss_shocked</Name>
+		<Dialogue>
+			<Page>I'm playin...</Page>
+			<Page>Wait a sec<![CDATA[<Pause=1>]]>.<![CDATA[<Pause=1>]]>.<![CDATA[<Pause=1>]]>.</Page>
+			<Page><![CDATA[<b>]]>Where is my beloved banjo?!<![CDATA[</b>]]> I swear I was playing it just a moment ago!</Page>
+			<Page>I really need to find it, the entire UNIVERSE's harmony depends on it!</Page>
+			<Page><![CDATA[<size=20>]]>(or at least our solar system's harmony)<![CDATA[</size>]]></Page>
+			<Page>It's imperative to go soon! Take this.</Page>
+			<Page>With this upgrade to your signalscope, you'll be able to track Sam down. But be careful, he can be smart and elusive!</Page>
+		</Dialogue>
+		<SetCondition>NOMAISKY_GNEISS_MISSION</SetCondition>
+		<SetPersistentCondition>NOMAISKY_GNEISS_UPGRADE</SetPersistentCondition>
+		<DialogueOptionsList>
+			<DialogueOption>
+				<Text>It makes sense you don't remember it, but you already told me all of this.</Text>
+				<DialogueTarget>Gneiss_wtf</DialogueTarget>
+				<RequiredPersistentCondition>NOMAISKY_GNEISS_UPGRADE</RequiredPersistentCondition>
+			</DialogueOption>
+			<DialogueOption>
+				<Text>Who is Sam?</Text>
+				<DialogueTarget>Gneiss_wtfKiddo</DialogueTarget>
+			</DialogueOption>
+			<DialogueOption>
+				<Text>You can rely on me!</Text>
+				<DialogueTarget>Gneiss_thxKiddo</DialogueTarget>
+			</DialogueOption>
+		</DialogueOptionsList>
+	</DialogueNode>
+	<DialogueNode>
+		<Name>Gneiss_wtfKiddo</Name>
+		<Dialogue>
+			<Page>Well my banjo of course kiddo!</Page>
+		</Dialogue>
+		<DialogueOptionsList>
+			<DialogueOption>
+				<Text><![CDATA[<size=20>]]>I guess I don't have a choice.<![CDATA[</size>]]></Text>
+				<DialogueTarget>Gneiss_thxKiddo</DialogueTarget>
+			</DialogueOption>
+			<DialogueOption>
+				<Text>Oh, ok then!</Text>
+				<DialogueTarget>Gneiss_thxKiddo</DialogueTarget>
+			</DialogueOption>
+		</DialogueOptionsList>
+	</DialogueNode>
+	<DialogueNode>
+		<Name>Gneiss_thxKiddo</Name>
+		<Dialogue>
+			<Page>Thanks!</Page>
+		</Dialogue>
+	</DialogueNode>
+	<DialogueNode>
+		<Name>Gneiss_wtf</Name>
+		<Dialogue>
+			<Page>Are you calling me senile?!</Page>
+		</Dialogue>
+	</DialogueNode>
+</DialogueTree>

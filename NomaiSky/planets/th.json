@@ -15,6 +15,12 @@
 				"alignRadial": true
 			}
 		],
+		"dialogue": [
+			{
+				"pathToExistingDialogue": "Sector_TH/Sector_Village/Sector_LowerVillage/Characters_LowerVillage/Villager_HEA_Gneiss/ConversationZone",
+				"xmlFile": "planets/Gneiss.xml"
+			}
+        ],
 		/*"geysers": [
 			{
 				"tint": {
