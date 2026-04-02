@@ -7,6 +7,12 @@
 				<Text>Uh... what are you doing with that ladle?</Text>
 				<DialogueTarget>Gneiss_shocked</DialogueTarget>
 				<CancelledCondition>NOMAISKY_GNEISS_MISSION</CancelledCondition>
+				<CancelledPersistentCondition>NOMAISKY_GNEISS_COMPLETED</CancelledPersistentCondition>
+			</DialogueOption>
+			<DialogueOption>
+				<Text>Hey! I found your banjo!</Text>
+				<DialogueTarget>Gneiss_relieved</DialogueTarget>
+				<RequiredPersistentCondition>NOMAISKY_GNEISS_COMPLETED</RequiredPersistentCondition>
 			</DialogueOption>
 		</DialogueOptionsList>
 	</DialogueNode>
@@ -17,6 +23,12 @@
 				<Text>By the way, what are you doing with that ladle?</Text>
 				<DialogueTarget>Gneiss_shocked</DialogueTarget>
 				<CancelledCondition>NOMAISKY_GNEISS_MISSION</CancelledCondition>
+				<CancelledPersistentCondition>NOMAISKY_GNEISS_COMPLETED</CancelledPersistentCondition>
+			</DialogueOption>
+			<DialogueOption>
+				<Text>Hey! I found your banjo!</Text>
+				<DialogueTarget>Gneiss_relieved</DialogueTarget>
+				<RequiredPersistentCondition>NOMAISKY_GNEISS_COMPLETED</RequiredPersistentCondition>
 			</DialogueOption>
 		</DialogueOptionsList>
 	</DialogueNode>
@@ -29,7 +41,7 @@
 			<Page>I really need to find it, the entire UNIVERSE's harmony depends on it!</Page>
 			<Page><![CDATA[<size=20>]]>(or at least our solar system's harmony)<![CDATA[</size>]]></Page>
 			<Page>It's imperative to go soon! Take this.</Page>
-			<Page>With this upgrade to your signalscope, you'll be able to track Sam down. But be careful, he can be smart and elusive!</Page>
+			<Page>With this upgrade to your signalscope, you'll be able to track Sam down. But be careful, he's smart and elusive!</Page>
 		</Dialogue>
 		<SetCondition>NOMAISKY_GNEISS_MISSION</SetCondition>
 		<SetPersistentCondition>NOMAISKY_GNEISS_UPGRADE</SetPersistentCondition>

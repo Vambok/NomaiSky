@@ -56,6 +56,17 @@ public class NomaiSky : ModBehaviour {
     const float warpDriveEfficiency = 1f; //The more efficient, the less fuel consumption
     const int mapRadius = 5;
     readonly float warpPower = 1f; // min 0.2 to max 1
+    //Generation:
+    const string generationVersion = "0.4.3",//Changing this will cause a rebuild of all previously visited systems, increment only when changing the procedural generation!
+    //Globes:
+        globePrefix = $"VAMBOK.NOMAISKY_{generationVersion}_Globe_";
+    //Warping & flying:
+    const int maxFuelEasy = 50000,
+        maxFuelMedium = 10000,
+        maxFuelHard = 5000,
+        maxFuelSandbox = int.MaxValue,
+    //Quests:
+        banjoFollowLimit = 10;
 
     // INDUCED PARAMETERS:
     const int minPlanetRadius = minPlanetSqrtRadius * minPlanetSqrtRadius,
@@ -81,6 +92,9 @@ public class NomaiSky : ModBehaviour {
         avgStarRadius = minStarRadius + varStarRadius * 3,
         //System:
         maxSystemRadius = maxPlanetOrbit + maxMoonOrbit + maxHeightOnMoon;
+    //Galactic map:
+    public const int entryRadius = 10000 * (maxSystemRadius / 10000 + 1);
+    public const int systemRadius = entryRadius * 2;
 
     // START:
     public static NomaiSky Instance;
@@ -96,8 +110,6 @@ public class NomaiSky : ModBehaviour {
     GameObject visitedLines, distantLines, visitedRings;
     string travelMarkersConfig = "";
     readonly List<(int x, int y, int z)> visited = [(0, 0, 0)];
-    public const int entryRadius = 10000 * (maxSystemRadius / 10000 + 1);
-    public const int systemRadius = entryRadius * 2;
     // FLYING & WARPING:
     int numberFlew = 0;
     int numberWarped = 0;
@@ -106,8 +118,8 @@ public class NomaiSky : ModBehaviour {
     Vector3 entrySpeed;
     (int, int, int)? targetStar;
     bool wasAutopilotOn = false;
-    int maxFuel = 10000;
-    float remainingFuel = 10000;
+    int maxFuel = maxFuelMedium;
+    float remainingFuel = maxFuelMedium;
     // FUEL TOOL:
     Color32 jetpackColor;
     string jetpackFuel;
@@ -117,10 +129,8 @@ public class NomaiSky : ModBehaviour {
     // GENERATION:
     readonly int galaxyName = 0;
     readonly List<(float esperance, int max, bool canRepeat, string prop)> rareProps = [];
-    const string generationVersion = "0.4.3";//Changing this will cause a rebuild of all previously visited systems, increment only when changing the procedural generation!
     // GLOBES:
     readonly List<string> expectedFacts = [];
-    const string globePrefix = $"VAMBOK.NOMAISKY_{generationVersion}_Globe_";
     [Serializable]
     public class GlobeMeta {
         public int x, y, z;
@@ -133,8 +143,6 @@ public class NomaiSky : ModBehaviour {
     // QUESTS:
     int banjoFollows = 0;
     (int, int, int) banjoCoords = (0, 0, 0);
-    // QUEST PARAMETERS:
-    const int banjoFollowLimit = 10;
     // UTILS:
     UnityEngine.UI.Text splashScreenText, splashScreenText2;
     readonly List<int> seenTexts = [];
@@ -419,11 +427,12 @@ public class NomaiSky : ModBehaviour {
         if(LoadManager.GetCurrentScene() == OWScene.SolarSystem) {
             TravelLinesVisibility(config.GetSettingsValue<string>("Visited_display"));
             maxFuel = config.GetSettingsValue<string>("Difficulty") switch {
-                "Easy" => 50000,
-                "Medium" => 10000,
-                "Hard" => 5000,
-                _ => int.MaxValue
+                "Easy" => maxFuelEasy,
+                "Medium" => maxFuelMedium,
+                "Hard" => maxFuelHard,
+                _ => maxFuelSandbox
             };
+            if(maxFuel > maxFuelEasy) ship.resources?.SetFuel(maxFuel);
         }
     }
     void LoadState() {
@@ -462,10 +471,10 @@ public class NomaiSky : ModBehaviour {
         if(saveData != null) numberWarped = int.Parse(saveData.id);
 
         maxFuel = ModHelper.Config.GetSettingsValue<string>("Difficulty") switch {
-            "Easy" => 50000,
-            "Medium" => 10000,
-            "Hard" => 5000,
-            _ => int.MaxValue
+            "Easy" => maxFuelEasy,
+            "Medium" => maxFuelMedium,
+            "Hard" => maxFuelHard,
+            _ => maxFuelSandbox
         };
         saveData = PlayerData.GetShipLogFactSave("NomaiSky_remainingFuel");
         if(saveData != null) remainingFuel = float.Parse(saveData.id, CultureInfo.InvariantCulture);
@@ -519,6 +528,7 @@ public class NomaiSky : ModBehaviour {
         //PlayerData._currentGameSave.shipLogFactSaves.Remove("NomaiSky_thrustersColor");
         //PlayerData._currentGameSave.shipLogFactSaves.Remove("NomaiSky_thrustersFuel");
         //PlayerData.SetPersistentCondition("NOMAISKY_GNEISS_UPGRADE", false);
+        //PlayerData.SetPersistentCondition("NOMAISKY_GNEISS_COMPLETED", false);
         PlayerData.SaveCurrentGame();
     }
     #endregion
@@ -636,34 +646,36 @@ public class NomaiSky : ModBehaviour {
     }
     void GenerateNeighborhood() {
         // banjo position:
-        if(banjoCoords == currentCenter) banjoFollows++;
-        banjoCoords = (0, 0, 0);
-        if(banjoFollows < banjoFollowLimit) {
-            for(int iter = 0; iter < 9999; iter++) {
-                banjoCoords = (UnityEngine.Random.Range(-mapRadius, mapRadius), UnityEngine.Random.Range(-mapRadius, mapRadius), UnityEngine.Random.Range(-mapRadius, mapRadius));
-                if(banjoCoords != (0, 0, 0) && (banjoCoords.Item1 * banjoCoords.Item1 + banjoCoords.Item2 * banjoCoords.Item2 + banjoCoords.Item3 * banjoCoords.Item3 <= mapRadius * mapRadius) && ((currentCenter.x + banjoCoords.Item1, currentCenter.y + banjoCoords.Item2, currentCenter.z + banjoCoords.Item3) != (0, 0, 0)))
-                    break;
+        if(PlayerData.GetPersistentCondition("NOMAISKY_GNEISS_UPGRADE")) { //If banjo quest has started
+            if(banjoCoords == currentCenter) banjoFollows++;
+            banjoCoords = (0, 0, 0);
+            if(banjoFollows < banjoFollowLimit) {
+                for(int iter = 0; iter < 9999; iter++) {
+                    banjoCoords = (UnityEngine.Random.Range(-mapRadius, mapRadius), UnityEngine.Random.Range(-mapRadius, mapRadius), UnityEngine.Random.Range(-mapRadius, mapRadius));
+                    if(banjoCoords != (0, 0, 0) && (banjoCoords.Item1 * banjoCoords.Item1 + banjoCoords.Item2 * banjoCoords.Item2 + banjoCoords.Item3 * banjoCoords.Item3 <= mapRadius * mapRadius) && ((currentCenter.x + banjoCoords.Item1, currentCenter.y + banjoCoords.Item2, currentCenter.z + banjoCoords.Item3) != (0, 0, 0)))
+                        break;
+                }
+            } else if(banjoFollows == banjoFollowLimit) {
+                Transform banjo = GameObject.Find("Props_HEA_Banjo").transform;
+                NewHorizons.Components.Orbital.NHAstroObject[] toto = Array.FindAll(FindObjectsOfType<NewHorizons.Components.Orbital.NHAstroObject>(), a => (a.GetAstroObjectType() != AstroObject.Type.Star && a.name.Substring(0, 11) != "Bel-O-Kanof"));
+                GameObject banjoPlanet = toto[UnityEngine.Random.Range(0, toto.Length - 1)].gameObject;
+                banjo.SetParent(banjoPlanet.transform);
+                float planetDiameter = banjoPlanet.GetComponent<SphereShape>().radius * 2;
+                Vector3 fallPoint = banjoPlanet.transform.position + planetDiameter * UnityEngine.Random.onUnitSphere;
+                if(Physics.Raycast(fallPoint, banjoPlanet.transform.position - fallPoint, out RaycastHit hit, planetDiameter)) {
+                    banjo.position = hit.point + 0.5f * hit.normal;
+                    banjo.rotation = Quaternion.FromToRotation(Vector3.up, hit.normal) * Quaternion.Euler(0, UnityEngine.Random.Range(0, 360), 0);
+                    GameObject banjoSound = GameObject.Find("AudioSource_BanjoTuning");
+                    GameObject banjoSignal = Instantiate(GameObject.Find("Signal_Banjo"), banjo);
+                    banjoSignal.transform.localPosition = Vector3.zero;
+                    banjoSignal.SetActive(true);
+                    AudioSignal banjoSignal_AS = banjoSignal.GetComponent<AudioSignal>();
+                    banjoSignal_AS._owAudioSource = banjoSound.GetComponent<OWAudioSource>();
+                    banjoSignal_AS._name = SignalName.Default;
+                }
+                banjo.gameObject.SetActive(true);
+                banjoFollows -= 2;
             }
-        } else if(banjoFollows == banjoFollowLimit) {
-            Transform banjo = GameObject.Find("Props_HEA_Banjo").transform;
-            NewHorizons.Components.Orbital.NHAstroObject[] toto = Array.FindAll(FindObjectsOfType<NewHorizons.Components.Orbital.NHAstroObject>(), a => (a.GetAstroObjectType() != AstroObject.Type.Star && a.name.Substring(0, 11) != "Bel-O-Kanof"));
-            GameObject banjoPlanet = toto[UnityEngine.Random.Range(0, toto.Length - 1)].gameObject;
-            banjo.SetParent(banjoPlanet.transform);
-            float planetDiameter = banjoPlanet.GetComponent<SphereShape>().radius * 2;
-            Vector3 fallPoint = banjoPlanet.transform.position + planetDiameter * UnityEngine.Random.onUnitSphere;
-            if(Physics.Raycast(fallPoint, banjoPlanet.transform.position - fallPoint, out RaycastHit hit, planetDiameter)) {
-                banjo.position = hit.point + 0.5f * hit.normal;
-                banjo.rotation = Quaternion.FromToRotation(Vector3.up, hit.normal) * Quaternion.Euler(0, UnityEngine.Random.Range(0, 360), 0);
-                GameObject banjoSound = GameObject.Find("AudioSource_BanjoTuning");
-                GameObject banjoSignal = Instantiate(GameObject.Find("Signal_Banjo"), banjo);
-                banjoSignal.transform.localPosition = Vector3.zero;
-                banjoSignal.SetActive(true);
-                AudioSignal banjoSignal_AS = banjoSignal.GetComponent<AudioSignal>();
-                banjoSignal_AS._owAudioSource = banjoSound.GetComponent<OWAudioSource>();
-                banjoSignal_AS._name = SignalName.Default;
-            }
-            banjo.gameObject.SetActive(true);
-            banjoFollows -= 2;
         }
 
         // distant stars generation:
@@ -1014,7 +1026,7 @@ public class NomaiSky : ModBehaviour {
             //Set custom maxFuel unless Resource Management is enabled:
             if(!hasRM) ship.resources._maxFuel = maxFuel;
             //Keep current fuel level:
-            if(maxFuel > 999999) remainingFuel = maxFuel;
+            if(maxFuel > maxFuelEasy) remainingFuel = maxFuel;
             else if(remainingFuel > ship.resources._maxFuel) remainingFuel = ship.resources._maxFuel;
             if(currentCenter != (0, 0, 0)) ship.resources.SetFuel(remainingFuel);
             else ship.resources.SetFuel(maxFuel);//Thanks Slate!
@@ -1990,9 +2002,11 @@ public class NomaiSky : ModBehaviour {
 
 //URGENT:
 //TODO:
-//      add mysterious artefacts (one / 10 systems) that increase warpPower towards 1
-//      add signals to rare scatter
-//      Gneiss banjo quest
+//  Gneiss banjo quest:
+//      add "Gneiss_relieved" dialogue node
+//      fire persistent condition "NOMAISKY_GNEISS_COMPLETED" on Banjo pickup
+//  add mysterious artefacts (one / 10 systems) that increase warpPower towards 1
+//  add signals to rare scatter
 //  fix duplicate fuel tool on SolarSystem reentry
 //  fix spawning sometime weird offset?
 //  add name to banjo signal
@@ -2006,6 +2020,7 @@ public class NomaiSky : ModBehaviour {
 //TO TEST:
 //  banjo signal and generation
 //  allow space spawn in SolarSystem (and other mods)
+//  auto-refill fuel when choosing Sandbox mode
 //DONE:
 //  bigger referenceframevolume (entryradius)
 //  galactic key not found
