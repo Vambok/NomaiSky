@@ -1,4 +1,5 @@
 ![Nomai's Sky Banner](https://github.com/user-attachments/assets/da5bc69f-1730-4ddc-97b8-77ae38793335)
+[![Donate](https://img.shields.io/badge/Donate-PayPal(Vambok)-blue.svg)](https://www.paypal.com/paypalme/vambok) <sup><sub>(you probably should wait for the mod to grow but you can also donate now to help that happen faster, infinite thanks eitherway)</sub></sup>
 
 # Nomai's Sky *(beta version)*
 
